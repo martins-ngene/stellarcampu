@@ -1,0 +1,145 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  EXPIRED
+  COMPLETED
+}
+
+enum SubmissionStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  DUPLICATE
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  username       String    @unique
+  displayName    String
+  githubUsername String?
+  role           Role      @default(STUDENT)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  wallets        Wallet[]
+  assignments    ChallengeAssignment[]
+  submissions    Submission[]
+  progress       StudentProgress[]
+
+  @@index([email])
+  @@index([username])
+}
+
+model Wallet {
+  id             String    @id @default(uuid())
+  userId         String
+  stellarAddress String    @unique
+  isVerified     Boolean   @default(false)
+  verifiedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([stellarAddress])
+}
+
+model Challenge {
+  id             String    @id
+  title          String
+  description    String
+  category       String
+  difficulty     String
+  network        String    @default("testnet")
+  expectedOpType String
+  config         Json
+  orderIndex     Int       @default(0)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+
+  assignments    ChallengeAssignment[]
+  submissions    Submission[]
+  progress       StudentProgress[]
+}
+
+model ChallengeAssignment {
+  id                  String           @id @default(uuid())
+  userId              String
+  challengeId         String
+  assignedMemo        String?
+  assignedNonce       String?
+  assignedDestination String?
+  assignedAmount      String?
+  assignedAsset       String?
+  assignedContractId  String?
+  status              AssignmentStatus @default(ACTIVE)
+  expiresAt           DateTime
+  createdAt           DateTime         @default(now())
+
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge           Challenge        @relation(fields: [challengeId], references: [id])
+  submissions         Submission[]
+
+  @@index([userId, challengeId, status])
+  @@index([assignedMemo])
+}
+
+model Submission {
+  id                  String           @id @default(uuid())
+  userId              String
+  challengeId         String
+  assignmentId        String
+  txHash              String           @unique
+  contractId          String?
+  status              SubmissionStatus @default(PENDING)
+  failureReason       String?
+  verificationDetails Json?
+  createdAt           DateTime         @default(now())
+
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge           Challenge        @relation(fields: [challengeId], references: [id])
+  assignment          ChallengeAssignment @relation(fields: [assignmentId], references: [id])
+  progress            StudentProgress?
+
+  @@index([txHash])
+  @@index([userId, challengeId])
+}
+
+model StudentProgress {
+  id           String     @id @default(uuid())
+  userId       String
+  challengeId  String
+  submissionId String     @unique
+  completedAt  DateTime   @default(now())
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge    Challenge  @relation(fields: [challengeId], references: [id])
+  submission   Submission @relation(fields: [submissionId], references: [id])
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+}
+
+model NonceChallenge {
+  id             String   @id @default(uuid())
+  stellarAddress String
+  nonce          String   @unique
+  expiresAt      DateTime
+  used           Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([stellarAddress, nonce])
+}

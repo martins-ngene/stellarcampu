@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+dist/
+build/
+target/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Soroban / Rust build artifacts
+contracts/**/target/
+**/*.rs.bk
+
+# Portfolio & Internal learning documentation
+RESUME.md
+
+# Logs & OS artifacts
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+.idea/
+.vscode/
