@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: stellarcampus-backend
+    env: node
+    plan: standard
+    buildCommand: cd backend && npm install && npx prisma generate && npm run build
+    startCommand: cd backend && npx prisma db push && node dist/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stellarcampus-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STELLAR_NETWORK_PASSPHRASE
+        value: "Test SDF Network ; September 2015"
+      - key: STELLAR_HORIZON_URL
+        value: "https://horizon-testnet.stellar.org"
+      - key: STELLAR_SOROBAN_RPC_URL
+        value: "https://soroban-testnet.stellar.org"
+      - key: SOROBAN_CONTRACT_ID
+        value: "CA3P7YT764IMXGP7TRLC64KYONLMCRGUJ23GIU646UKOEFSGPVE7UNFK"
+      - key: CAMPUS_VAULT_ADDRESS
+        value: "GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV"
+      - key: CAMPUS_ASSET_ISSUER
+        value: "GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV"
+
+databases:
+  - name: stellarcampus-db
+    databaseName: stellarcampus
+    user: stellarcampus_user
+    plan: standard

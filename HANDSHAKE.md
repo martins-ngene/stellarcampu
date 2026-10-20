@@ -46,10 +46,13 @@ sequenceDiagram
     Wallet-->>Frontend: Returns base64 Signature
 
     Frontend->>API: POST /auth/verify { stellar_address, signature }
-    API->>API: Verify ed25519 signature
+    API->>API: Verify Ed25519 signature (supports both SEP-53 Freighter & legacy raw)
     API-->>Frontend: { token: "eyJhbGciOi...", user: { id, stellar_address, ... } }
     Frontend->>Frontend: Store Bearer Token (Secure Storage / Memory)
 ```
+
+> [!NOTE]
+> **SEP-53 Wallet Signature Support**: The backend seamlessly handles modern **Freighter SEP-53** standard signatures (`SHA256("Stellar Signed Message:\n" + message)`) as well as legacy raw Ed25519 signatures from custom keypairs or test scripts without requiring any frontend translation.
 
 ### Auth Code Example (Client-side)
 ```typescript

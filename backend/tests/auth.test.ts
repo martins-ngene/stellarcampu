@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import crypto from 'node:crypto';
 import { Keypair } from '@stellar/stellar-sdk';
 import { AuthService } from '../src/services/auth.service.js';
 
@@ -78,11 +79,11 @@ describe('AuthService Cryptographic Verification', () => {
     expect(result.message).toContain(result.nonce);
   });
 
-  it('successfully verifies a valid Ed25519 signature from student keypair', async () => {
+  it('successfully verifies a valid legacy raw Ed25519 signature from student keypair', async () => {
     const keypair = Keypair.random();
     const { nonce, message } = await authService.generateNonce(keypair.publicKey());
 
-    // Sign message using genuine Stellar Keypair
+    // Sign raw message buffer (legacy format)
     const messageBuffer = Buffer.from(message, 'utf-8');
     const signature = keypair.sign(messageBuffer).toString('base64');
 
@@ -91,6 +92,30 @@ describe('AuthService Cryptographic Verification', () => {
       signature,
       'stellar_tester',
       'tester@example.com'
+    );
+
+    expect(authResult.user).toBeDefined();
+    expect(authResult.user.stellarAddress).toBe(keypair.publicKey());
+    expect(authResult.user.isVerified).toBe(true);
+  });
+
+  it('successfully verifies a Freighter-style SEP-53 message signature', async () => {
+    const keypair = Keypair.random();
+    const { nonce, message } = await authService.generateNonce(keypair.publicKey());
+
+    // Construct SEP-53 hash payload: SHA256("Stellar Signed Message:\n" + message)
+    const sep53Prefix = Buffer.from('Stellar Signed Message:\n', 'utf-8');
+    const sep53Payload = Buffer.concat([sep53Prefix, Buffer.from(message, 'utf-8')]);
+    const sep53Hash = crypto.createHash('sha256').update(sep53Payload).digest();
+
+    // Freighter signs the 32-byte SHA-256 hash
+    const freighterSignature = keypair.sign(sep53Hash).toString('base64');
+
+    const authResult = await authService.verifySignature(
+      keypair.publicKey(),
+      freighterSignature,
+      'freighter_student',
+      'freighter@stellar.org'
     );
 
     expect(authResult.user).toBeDefined();

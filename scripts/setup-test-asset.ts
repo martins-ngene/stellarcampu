@@ -1,3 +1,4 @@
+import process from 'node:process';
 import { Keypair, Horizon, Asset, Operation, TransactionBuilder, Networks } from '@stellar/stellar-sdk';
 
 const HORIZON_URL = 'https://horizon-testnet.stellar.org';

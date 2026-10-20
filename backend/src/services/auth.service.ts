@@ -44,13 +44,45 @@ export class AuthService {
 
     const message = `Sign this message to authenticate with StellarCampus: ${challenge.nonce}`;
 
-    // 2. Cryptographic Ed25519 signature verification via Stellar SDK
+    // 2. Cryptographic Ed25519 signature verification supporting SEP-53 (Freighter standard) & legacy raw
     try {
       const keypair = Keypair.fromPublicKey(stellarAddress);
       const signatureBuffer = Buffer.from(signature, 'base64');
       const messageBuffer = Buffer.from(message, 'utf-8');
 
-      const isValid = keypair.verify(messageBuffer, signatureBuffer);
+      let isValid = false;
+
+      // Method A: SEP-53 standard format used by Freighter and Stellar Wallets Kit
+      // Hash = SHA256("Stellar Signed Message:\n" + message)
+      try {
+        const sep53Prefix = Buffer.from('Stellar Signed Message:\n', 'utf-8');
+        const sep53Payload = Buffer.concat([sep53Prefix, messageBuffer]);
+        const sep53Hash = crypto.createHash('sha256').update(sep53Payload).digest();
+        isValid = keypair.verify(sep53Hash, signatureBuffer);
+      } catch (_err) {
+        isValid = false;
+      }
+
+      // Method B: Legacy raw format (direct Ed25519 signature over message bytes)
+      if (!isValid) {
+        try {
+          isValid = keypair.verify(messageBuffer, signatureBuffer);
+        } catch (_err) {
+          isValid = false;
+        }
+      }
+
+      // Method C: SEP-53 prefix without SHA-256 hashing (alternative web wallet fallback)
+      if (!isValid) {
+        try {
+          const sep53Prefix = Buffer.from('Stellar Signed Message:\n', 'utf-8');
+          const sep53Payload = Buffer.concat([sep53Prefix, messageBuffer]);
+          isValid = keypair.verify(sep53Payload, signatureBuffer);
+        } catch (_err) {
+          isValid = false;
+        }
+      }
+
       if (!isValid) {
         throw new Error('Invalid signature');
       }
