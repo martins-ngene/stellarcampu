@@ -58,31 +58,42 @@ export class SorobanService {
     let challengeIdMatches = false;
     let foundContractId = '';
 
+    function getField(obj: any, key: string): any {
+      if (!obj) return undefined;
+      if (typeof obj[key] === 'function') return obj[key]();
+      return obj[key];
+    }
+
     // Inspect operations within the envelope
-    const txV1 = envelope.v1();
-    const ops = txV1.tx().operations();
+    const envAny = envelope as any;
+    const txV1 = getField(envAny, 'v1') || envAny;
+    const txx = getField(txV1, 'tx') || txV1;
+    const ops = getField(txx, 'operations') || [];
 
     for (const op of ops) {
-      const body = op.body() as any;
-      if (body.arm?.() === 'invokeHostFunctionOp' || body.switch?.()?.name === 'invokeHostFunctionOp') {
-        const invokeOp = body.invokeHostFunctionOp();
-        const hostFn = invokeOp.hostFunction() as any;
+      const body = getField(op, 'body') || op;
+      const invokeOp = getField(body, 'invokeHostFunctionOp');
 
-        if (hostFn.arm?.() === 'invokeContract' || hostFn.switch?.()?.name === 'invokeContract') {
-          const contractArgs = hostFn.invokeContract();
-          const contractAddressObj = Address.fromScAddress(contractArgs.contractAddress());
+      if (invokeOp) {
+        const hostFn = getField(invokeOp, 'hostFunction');
+        const invokeContract = getField(hostFn, 'invokeContract');
+
+        if (invokeContract) {
+          const scAddress = getField(invokeContract, 'contractAddress');
+          const contractAddressObj = Address.fromScAddress(scAddress);
           foundContractId = contractAddressObj.toString();
 
           if (foundContractId === expectedContractId) {
             contractMatches = true;
           }
 
-          const functionName = contractArgs.functionName().toString();
+          const fnNameRaw = getField(invokeContract, 'functionName');
+          const functionName = fnNameRaw?.toString();
           if (functionName === 'complete_challenge') {
             functionMatches = true;
           }
 
-          const args = contractArgs.args();
+          const args = getField(invokeContract, 'args') || [];
           if (args.length >= 2) {
             // Arg 0: student address
             const argStudentAddr = Address.fromScVal(args[0]).toString();
@@ -99,12 +110,13 @@ export class SorobanService {
         }
 
         // Also check authorized auth entries in the host function
-        const authEntries = invokeOp.auth();
+        const authEntries = getField(invokeOp, 'auth') || [];
         for (const auth of authEntries) {
-          const credentials = auth.credentials() as any;
-          if (credentials.arm?.() === 'address' || credentials.switch?.()?.name === 'address') {
-            const addrCred = credentials.address();
-            const authorizedAddr = Address.fromScAddress(addrCred.address()).toString();
+          const credentials = getField(auth, 'credentials');
+          const addrCred = getField(credentials, 'address');
+          if (addrCred) {
+            const scAddr = getField(addrCred, 'address') || addrCred;
+            const authorizedAddr = Address.fromScAddress(scAddr).toString();
             if (authorizedAddr === expectedStudent) {
               studentAuthorized = true;
             }

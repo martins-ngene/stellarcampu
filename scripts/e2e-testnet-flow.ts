@@ -70,7 +70,7 @@ async function main() {
   const sep53Prefix = Buffer.from('Stellar Signed Message:\n', 'utf-8');
   const sep53Payload = Buffer.concat([sep53Prefix, Buffer.from(message, 'utf-8')]);
   const sep53Hash = crypto.createHash('sha256').update(sep53Payload).digest();
-  const sep53Signature = student.sign(sep53Hash).toString('base64');
+  const sep53Signature = Buffer.from(student.sign(sep53Hash)).toString('base64');
 
   console.log('   Exchanging signature for Bearer JWT token...');
   const verifyRes = await fetch(`${API_BASE_URL}/auth/verify`, {
@@ -99,6 +99,7 @@ async function main() {
   const startCh2 = await fetch(`${API_BASE_URL}/challenges/fund_account_002/start`, {
     method: 'POST',
     headers: authHeaders,
+    body: JSON.stringify({}),
   });
   const ch2Assignment = (await startCh2.json()) as any;
 
@@ -118,6 +119,7 @@ async function main() {
   const startCh3 = await fetch(`${API_BASE_URL}/challenges/payment_xlm_003/start`, {
     method: 'POST',
     headers: authHeaders,
+    body: JSON.stringify({}),
   });
   const ch3Assignment = (await startCh3.json()) as any;
   const { destination, amount, memo: assignedMemo } = ch3Assignment.assignedParameters;
@@ -162,11 +164,102 @@ async function main() {
   }
   console.log(`   ✅ Challenge 3 VERIFIED! Explorer URL: ${ch3Result.explorer_url}\n`);
 
-  // 5. Challenge 5: Soroban Smart Contract Interaction
-  console.log('5. Executing Challenge 5 (soroban_contract_005)...');
+  // 5. Challenge 4: Transfer a Supported Stellar Asset (CAMPUS)
+  console.log('5. Executing Challenge 4 (asset_transfer_004)...');
+  const startCh4 = await fetch(`${API_BASE_URL}/challenges/asset_transfer_004/start`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({}),
+  });
+  const ch4Assignment = (await startCh4.json()) as any;
+  const {
+    destination: ch4Destination,
+    amount: ch4Amount,
+    asset: ch4AssetCode,
+    assetIssuer: ch4Issuer,
+    memo: ch4Memo,
+  } = ch4Assignment.assignedParameters;
+
+  console.log(`   Asset Code:           ${ch4AssetCode}`);
+  console.log(`   Asset Issuer:         ${ch4Issuer}`);
+  console.log(`   Assigned Destination: ${ch4Destination}`);
+  console.log(`   Assigned Amount:      ${ch4Amount} ${ch4AssetCode}`);
+  console.log(`   Assigned Unique Memo: ${ch4Memo}`);
+
+  const campusAsset = new Asset(ch4AssetCode, ch4Issuer);
+
+  console.log('   Step A: Establishing trustline (changeTrust) for CAMPUS token...');
+  const studentAccForTrust = await horizon.loadAccount(student.publicKey());
+  const trustTx = new TransactionBuilder(studentAccForTrust, {
+    fee: '10000',
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(
+      Operation.changeTrust({
+        asset: campusAsset,
+        limit: '1000',
+      })
+    )
+    .setTimeout(180)
+    .build();
+
+  trustTx.sign(student);
+  const trustResult = await horizon.submitTransaction(trustTx);
+  console.log(`   ✅ Trustline established on-chain! Tx: ${trustResult.hash}`);
+
+  console.log('   Step B: Claiming testnet CAMPUS tokens from platform faucet...');
+  const claimRes = await fetch(`${API_BASE_URL}/challenges/asset_transfer_004/claim-tokens`, {
+    method: 'POST',
+    headers: authHeaders,
+  });
+  if (!claimRes.ok) {
+    throw new Error(`Faucet claim failed: ${await claimRes.text()}`);
+  }
+  const claimData = (await claimRes.json()) as any;
+  console.log(`   ✅ Faucet dispensed ${claimData.amount} ${claimData.asset}! Tx: ${claimData.transaction_hash}`);
+
+  console.log(`   Step C: Transferring ${ch4Amount} ${ch4AssetCode} to vault with memo ${ch4Memo}...`);
+  const studentAccForPayment = await horizon.loadAccount(student.publicKey());
+  const assetPaymentTx = new TransactionBuilder(studentAccForPayment, {
+    fee: '10000',
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(
+      Operation.payment({
+        destination: ch4Destination,
+        asset: campusAsset,
+        amount: ch4Amount,
+      })
+    )
+    .addMemo(Memo.text(ch4Memo))
+    .setTimeout(180)
+    .build();
+
+  assetPaymentTx.sign(student);
+  const assetPaymentResult = await horizon.submitTransaction(assetPaymentTx);
+  console.log(`   ✅ Asset payment confirmed on-chain! Tx: ${assetPaymentResult.hash}`);
+
+  console.log('   Step D: Submitting transaction hash for Challenge 4 verification...');
+  const submitCh4 = await fetch(`${API_BASE_URL}/challenges/asset_transfer_004/submit`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      assignment_id: ch4Assignment.assignmentId,
+      transaction_hash: assetPaymentResult.hash,
+    }),
+  });
+  const ch4Result = (await submitCh4.json()) as any;
+  if (ch4Result.status !== 'VERIFIED') {
+    throw new Error(`Challenge 4 verification failed: ${ch4Result.failureReason}`);
+  }
+  console.log(`   ✅ Challenge 4 VERIFIED! Explorer URL: ${ch4Result.explorer_url}\n`);
+
+  // 6. Challenge 5: Soroban Smart Contract Interaction
+  console.log('6. Executing Challenge 5 (soroban_contract_005)...');
   const startCh5 = await fetch(`${API_BASE_URL}/challenges/soroban_contract_005/start`, {
     method: 'POST',
     headers: authHeaders,
+    body: JSON.stringify({}),
   });
   const ch5Assignment = (await startCh5.json()) as any;
   const contractId = ch5Assignment.assignedParameters.contractId;

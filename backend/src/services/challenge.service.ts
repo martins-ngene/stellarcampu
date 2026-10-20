@@ -40,9 +40,20 @@ export class ChallengeService {
    * Retrieves specific challenge details
    */
   async getChallengeById(challengeId: string) {
-    return this.prisma.challenge.findUnique({
+    const challenge = await this.prisma.challenge.findUnique({
       where: { id: challengeId },
     });
+    if (!challenge) return null;
+    if (challenge.id === 'asset_transfer_004' && challenge.config) {
+      return {
+        ...challenge,
+        config: {
+          ...(challenge.config as any),
+          assetIssuer: env.CAMPUS_ASSET_ISSUER,
+        },
+      };
+    }
+    return challenge;
   }
 
   /**
@@ -95,6 +106,7 @@ export class ChallengeService {
         destination: assignment.assignedDestination,
         amount: assignment.assignedAmount,
         asset: assignment.assignedAsset,
+        assetIssuer: assignment.challengeId === 'asset_transfer_004' ? env.CAMPUS_ASSET_ISSUER : undefined,
         memo: assignment.assignedMemo,
         nonce: assignment.assignedNonce,
         contractId: assignment.assignedContractId,

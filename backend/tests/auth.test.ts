@@ -85,7 +85,7 @@ describe('AuthService Cryptographic Verification', () => {
 
     // Sign raw message buffer (legacy format)
     const messageBuffer = Buffer.from(message, 'utf-8');
-    const signature = keypair.sign(messageBuffer).toString('base64');
+    const signature = Buffer.from(keypair.sign(messageBuffer)).toString('base64');
 
     const authResult = await authService.verifySignature(
       keypair.publicKey(),
@@ -109,7 +109,7 @@ describe('AuthService Cryptographic Verification', () => {
     const sep53Hash = crypto.createHash('sha256').update(sep53Payload).digest();
 
     // Freighter signs the 32-byte SHA-256 hash
-    const freighterSignature = keypair.sign(sep53Hash).toString('base64');
+    const freighterSignature = Buffer.from(keypair.sign(sep53Hash)).toString('base64');
 
     const authResult = await authService.verifySignature(
       keypair.publicKey(),
@@ -131,7 +131,7 @@ describe('AuthService Cryptographic Verification', () => {
 
     // Attacker signs message with wrong private key
     const messageBuffer = Buffer.from(message, 'utf-8');
-    const attackerSignature = attackerKeypair.sign(messageBuffer).toString('base64');
+    const attackerSignature = Buffer.from(attackerKeypair.sign(messageBuffer)).toString('base64');
 
     await expect(
       authService.verifySignature(keypair.publicKey(), attackerSignature)

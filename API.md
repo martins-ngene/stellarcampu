@@ -201,11 +201,12 @@ Generates a time-bounded dynamic challenge assignment with a unique memo or nonc
 ```json
 {
   "assignmentId": "a92e104b-3d61-412e-a34e-09f182cba541",
-  "challengeId": "payment_xlm_003",
+  "challengeId": "asset_transfer_004",
   "assignedParameters": {
     "destination": "GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV",
-    "amount": "2.0000000",
-    "asset": "XLM",
+    "amount": "10.0000000",
+    "asset": "CAMPUS",
+    "assetIssuer": "GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV",
     "memo": "SC-491029",
     "nonce": "7a8b9c0d1e2f3a4b...",
     "contractId": "CA3P7YT764IMXGP7TRLC64KYONLMCRGUJ23GIU646UKOEFSGPVE7UNFK"
@@ -213,6 +214,31 @@ Generates a time-bounded dynamic challenge assignment with a unique memo or nonc
   "expiresAt": "2026-10-20T14:15:00.000Z"
 }
 ```
+
+---
+
+### `POST /api/challenges/:id/claim-tokens`
+Dispenses 20.0 testnet `CAMPUS` tokens to the authenticated student's wallet so they can perform Challenge 4 (`asset_transfer_004`).
+- **Preconditions**:
+  - Student wallet must have an established trustline for `CAMPUS` issued by `CAMPUS_ASSET_ISSUER`.
+  - Student must not already hold >= 10.0 `CAMPUS` (hoarding/spam prevention).
+- **Auth Required**: Yes (`Authorization: Bearer <token>`)
+
+#### Response `200 OK`
+```json
+{
+  "status": "DISPENSED",
+  "message": "Successfully dispensed 20.0 CAMPUS tokens to your wallet.",
+  "transaction_hash": "ecb2d01dbcda59bdb64a31c1e47b28b1a7dc8c3fb8cbfcba7656fde1d49e6bcd",
+  "amount": "20.0000000",
+  "asset": "CAMPUS",
+  "explorer_url": "https://stellar.expert/explorer/testnet/tx/ecb2d01dbcda59bdb64a31c1e47b28b1a7dc8c3fb8cbfcba7656fde1d49e6bcd"
+}
+```
+
+#### Error Responses
+- `400 Bad Request`: When trustline has not yet been established on-chain or student already holds sufficient balance.
+- `503 Service Unavailable`: When `CAMPUS_ISSUER_SECRET` is not configured on the backend.
 
 ---
 

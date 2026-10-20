@@ -63,7 +63,7 @@ flowchart LR
 1. **Challenge 1 — Wallet Ownership Verification (`wallet_verify_001`)**: Proves control of the student's Stellar private key via Ed25519 challenge-response. Automatically credits completion upon authentication.
 2. **Challenge 2 — Fund a Stellar Testnet Account (`fund_account_002`)**: Connects to Friendbot and verifies that the student account has been created with $\ge 1$ XLM balance.
 3. **Challenge 3 — Execute an XLM Payment (`payment_xlm_003`)**: Transmits 2.0 XLM to the Campus Vault matching the student's assigned dynamic memo reference (e.g. `SC-491029`).
-4. **Challenge 4 — Transfer a Supported Stellar Asset (`asset_transfer_004`)**: Adds a trustline for the `CAMPUS` test token and transfers 10.0 CAMPUS tokens with assigned memo.
+4. **Challenge 4 — Transfer a Supported Stellar Asset (`asset_transfer_004`)**: Establishes a trustline for the `CAMPUS` test token, claims test tokens from the platform faucet (`/api/challenges/asset_transfer_004/claim-tokens`), and transfers 10.0 CAMPUS tokens to the vault with the assigned dynamic memo.
 5. **Challenge 5 — Interact with a Soroban Smart Contract (`soroban_contract_005`)**: Invokes `complete_challenge` on the deployed Soroban contract on Testnet with student wallet authorization.
 
 ---

@@ -145,8 +145,21 @@ Every challenge adheres to a strict state cycle:
   ```
 
 ### Challenge 4 — Transfer a Supported Stellar Asset
-- **Action**: Student establishes a trustline for the test asset (`CAMPUS`) and transfers the assigned amount to the assigned destination with the assigned memo.
-- **Asset Config**: Asset Code `CAMPUS`, Issuer Address provided in `/challenges/asset_transfer_004`.
+- **Asset Config**: Asset Code `CAMPUS`, Issuer Address provided in `/challenges/asset_transfer_004` and in active assignment `assigned_parameters.asset_issuer`.
+- **Complete End-to-End Frontend Flow**:
+  1. **Start Assignment**: Call `POST /api/challenges/asset_transfer_004/start` to retrieve `destination`, `amount`, `asset`, `asset_issuer`, and unique `memo`.
+  2. **Establish Trustline**: Prompt user via Freighter to establish a trustline for `CAMPUS`:
+     ```typescript
+     import { Asset, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
+     const campusAsset = new Asset(assignment.assigned_parameters.asset, assignment.assigned_parameters.asset_issuer);
+     const tx = new TransactionBuilder(account, { fee: '10000', networkPassphrase })
+       .addOperation(Operation.changeTrust({ asset: campusAsset, limit: '1000' }))
+       .setTimeout(180)
+       .build();
+     ```
+  3. **Claim Faucet Tokens**: Call `POST /api/challenges/asset_transfer_004/claim-tokens` with Bearer auth. The platform dispenses 20.0 `CAMPUS` directly to the student's wallet on Testnet.
+  4. **Execute Asset Payment**: Prompt user via Freighter to transfer 10.0 `CAMPUS` to the assigned destination with the assigned unique memo.
+  5. **Authoritative Verification**: Submit transaction hash to `POST /api/challenges/asset_transfer_004/submit`.
 - **Submission Payload**: Same as Challenge 3.
 
 ### Challenge 5 — Interact with a Soroban Smart Contract
@@ -178,8 +191,9 @@ All requests requiring authentication must include:
 | `POST` | `/api/auth/challenge` | Request unique signing nonce for address |
 | `POST` | `/api/auth/verify` | Submit ed25519 signature; returns JWT Bearer token |
 | `GET` | `/api/challenges` | List all 5 challenges with completion status for logged-in user |
-| `GET` | `/api/challenges/:id` | Get challenge specifications, instructions, and active assignment |
-| `POST` | `/api/challenges/:id/start` | Generate dynamic assignment (unique memo, nonce, destination) |
+| `GET` | `/api/challenges/:id` | Get challenge specifications, instructions, config, and active assignment |
+| `POST` | `/api/challenges/:id/start` | Generate dynamic assignment (unique memo, nonce, destination, issuer) |
+| `POST` | `/api/challenges/:id/claim-tokens` | Dispense 20.0 `CAMPUS` testnet tokens to authenticated student with trustline |
 | `POST` | `/api/challenges/:id/submit` | Submit transaction hash for authoritative verification |
 | `GET` | `/api/submissions/:id` | Poll or retrieve full verification breakdown for a submission |
 | `GET` | `/api/students/me/progress` | Get overall completion progress, verified counts, pending counts |

@@ -68,6 +68,7 @@ async function main() {
       config: {
         type: 'custom_asset_payment',
         assetCode: 'CAMPUS',
+        assetIssuer: process.env.CAMPUS_ASSET_ISSUER || 'GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV',
         amount: '10.0000000',
         requireMemo: true,
         instructions: 'Add a trustline for CAMPUS and execute a payment of 10 CAMPUS tokens to the assigned destination.'

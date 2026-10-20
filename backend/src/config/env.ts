@@ -14,6 +14,7 @@ const envSchema = z.object({
   SOROBAN_CONTRACT_ID: z.string().optional().default(''),
   CAMPUS_VAULT_ADDRESS: z.string().optional().default('GBBD47IF6LWK7P7MDEVTESTNETDESTINATIONDEFAULT'),
   CAMPUS_ASSET_ISSUER: z.string().optional().default('GA3D5JTESTNETISSUERFORCAMPUSDEFAULTTOKEN12345'),
+  CAMPUS_ISSUER_SECRET: z.string().optional().default(''),
 });
 
 export const env = envSchema.parse(process.env);

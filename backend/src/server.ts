@@ -24,6 +24,20 @@ export function buildServer(): FastifyInstance {
     credentials: true,
   });
 
+  // Gracefully handle empty JSON body on POST requests
+  fastify.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
+    const text = typeof body === 'string' ? body.trim() : '';
+    if (!text) {
+      done(null, {});
+      return;
+    }
+    try {
+      done(null, JSON.parse(text));
+    } catch (err: any) {
+      done(err, undefined);
+    }
+  });
+
   fastify.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',

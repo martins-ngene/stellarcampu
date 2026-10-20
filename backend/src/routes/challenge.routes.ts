@@ -5,6 +5,7 @@ import { HorizonService } from '../services/horizon.service.js';
 import { SorobanService } from '../services/soroban.service.js';
 import { PaymentVerifier } from '../services/verifier/payment.verifier.js';
 import { AssetVerifier } from '../services/verifier/asset.verifier.js';
+import { AssetFaucetService } from '../services/faucet.service.js';
 import { SubmissionLockService } from '../services/verifier/submission-lock.service.js';
 import { env } from '../config/env.js';
 import { getExplorerTxUrl } from '../utils/url.util.js';
@@ -20,6 +21,7 @@ export const challengeRoutes: FastifyPluginAsync = async (fastify) => {
   const sorobanService = new SorobanService();
   const paymentVerifier = new PaymentVerifier(horizonService);
   const assetVerifier = new AssetVerifier(horizonService);
+  const faucetService = new AssetFaucetService();
   const lockService = new SubmissionLockService(fastify.prisma);
 
   // GET /api/challenges - List challenges for authenticated student
@@ -53,6 +55,38 @@ export const challengeRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(400).send({
         statusCode: 400,
         error: 'Bad Request',
+        message: err.message,
+      });
+    }
+  });
+
+  // POST /api/challenges/:id/claim-tokens - Dispense testnet CAMPUS tokens for Challenge 4
+  fastify.post<{ Params: { id: string } }>('/challenges/:id/claim-tokens', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const challengeId = request.params.id;
+    if (challengeId !== 'asset_transfer_004') {
+      return reply.status(400).send({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: "Token faucet is only available for challenge 'asset_transfer_004'.",
+      });
+    }
+
+    const studentWallet = request.user.stellarAddress;
+    try {
+      const result = await faucetService.dispenseCampusTokens(studentWallet);
+      return reply.send({
+        status: 'DISPENSED',
+        message: 'Successfully dispensed 20.0 CAMPUS tokens to your wallet.',
+        transaction_hash: result.txHash,
+        amount: result.amount,
+        asset: result.asset,
+        explorer_url: getExplorerTxUrl(result.txHash),
+      });
+    } catch (err: any) {
+      const statusCode = err.statusCode || 400;
+      return reply.status(statusCode).send({
+        statusCode,
+        error: statusCode === 503 ? 'Service Unavailable' : 'Bad Request',
         message: err.message,
       });
     }
