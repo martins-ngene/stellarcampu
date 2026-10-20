@@ -38,5 +38,5 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 3001
 
-# Run Prisma schema push on startup and launch Fastify
-CMD ["sh", "-c", "npx prisma db push && node dist/index.js"]
+# Run Prisma schema push and seed on startup and launch Fastify
+CMD ["sh", "-c", "npx prisma db push && npm run prisma:seed && node dist/index.js"]

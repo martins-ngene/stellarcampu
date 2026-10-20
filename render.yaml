@@ -4,7 +4,7 @@ services:
     env: node
     plan: standard
     buildCommand: cd backend && npm install && npx prisma generate && npm run build
-    startCommand: cd backend && npx prisma db push && node dist/index.js
+    startCommand: cd backend && npx prisma db push && npm run prisma:seed && node dist/index.js
     healthCheckPath: /health
     autoDeploy: true
     envVars:

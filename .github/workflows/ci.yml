@@ -68,6 +68,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/stellarcampus_test?schema=public
           JWT_SECRET: test-ci-secret-key-12345
+          CAMPUS_ISSUER_SECRET: SC7WSNXRI6H3UA6PQ3QSN7T6UAV7UBVYJITPOBWJWOWZ5C3MQGVBJFWV
         run: npm test
 
       - name: Verify TypeScript Compilation
