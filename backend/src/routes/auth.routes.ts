@@ -10,7 +10,7 @@ const verifySchema = z.object({
   stellar_address: z.string().min(56).max(56),
   signature: z.string().min(1),
   username: z.string().optional(),
-  email: z.string().email().optional(),
+  email: z.union([z.string().email(), z.literal('')]).optional(),
 });
 
 const errorSchema = {
@@ -36,7 +36,11 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         type: 'object',
         required: ['stellar_address'],
         properties: {
-          stellar_address: { type: 'string', description: 'Stellar public address (G...)' },
+          stellar_address: {
+            type: 'string',
+            description: 'Stellar public address (G...)',
+            example: 'GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV',
+          },
         },
       },
       response: {
@@ -86,10 +90,26 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         type: 'object',
         required: ['stellar_address', 'signature'],
         properties: {
-          stellar_address: { type: 'string', description: 'Stellar public address (G...)' },
-          signature: { type: 'string', description: 'Base64 encoded Ed25519 signature' },
-          username: { type: 'string', description: 'Optional username' },
-          email: { type: 'string', description: 'Optional email' },
+          stellar_address: {
+            type: 'string',
+            description: 'Stellar public address (G...)',
+            example: 'GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV',
+          },
+          signature: {
+            type: 'string',
+            description: 'Base64 encoded Ed25519 signature of the challenge message',
+            example: 'dGhpcyBpcyBhIHNhbXBsZSBlZDI1NTE5IHNpZ25hdHVyZQ==',
+          },
+          username: {
+            type: 'string',
+            description: 'Optional username',
+            example: 'student_dev',
+          },
+          email: {
+            type: 'string',
+            description: 'Optional email',
+            example: 'student@stellarcampus.xyz',
+          },
         },
       },
       response: {

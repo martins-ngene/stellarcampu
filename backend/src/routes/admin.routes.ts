@@ -7,7 +7,14 @@ const updateChallengeSchema = z.object({
 
 export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/admin/metrics - Global platform statistics
-  fastify.get('/admin/metrics', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  fastify.get('/admin/metrics', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      tags: ['Admin'],
+      summary: 'Get platform metrics and statistics',
+      security: [{ bearerAuth: [] }],
+    },
+  }, async (request, reply) => {
     // Only admins or authorized users
     if (request.user.role !== 'ADMIN' && process.env.NODE_ENV === 'production') {
       return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: 'Admin access required' });
@@ -32,7 +39,14 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // GET /api/admin/submissions - Filterable global submission log
-  fastify.get('/admin/submissions', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  fastify.get('/admin/submissions', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      tags: ['Admin'],
+      summary: 'Get global submission log',
+      security: [{ bearerAuth: [] }],
+    },
+  }, async (request, reply) => {
     const submissions = await fastify.prisma.submission.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -46,7 +60,28 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // PATCH /api/admin/challenges/:id - Activate or deactivate challenge
-  fastify.patch<{ Params: { id: string } }>('/admin/challenges/:id', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  fastify.patch<{ Params: { id: string } }>('/admin/challenges/:id', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      tags: ['Admin'],
+      summary: 'Toggle challenge active status',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', example: 'wallet_verify_001' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['isActive'],
+        properties: {
+          isActive: { type: 'boolean', example: true },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const parseResult = updateChallengeSchema.safeParse(request.body);
     if (!parseResult.success) {
       return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'Invalid payload' });

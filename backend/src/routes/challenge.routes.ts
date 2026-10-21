@@ -25,14 +25,33 @@ export const challengeRoutes: FastifyPluginAsync = async (fastify) => {
   const lockService = new SubmissionLockService(fastify.prisma);
 
   // GET /api/challenges - List challenges for authenticated student
-  fastify.get('/challenges', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  fastify.get('/challenges', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      tags: ['Challenges'],
+      summary: 'List all challenges with student progress',
+      security: [{ bearerAuth: [] }],
+    },
+  }, async (request, reply) => {
     const userId = request.user.userId;
     const challenges = await challengeService.listChallengesForStudent(userId);
     return reply.send({ challenges });
   });
 
   // GET /api/challenges/:id - Get challenge details
-  fastify.get<{ Params: { id: string } }>('/challenges/:id', async (request, reply) => {
+  fastify.get<{ Params: { id: string } }>('/challenges/:id', {
+    schema: {
+      tags: ['Challenges'],
+      summary: 'Get challenge specifications',
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', example: 'payment_xlm_003' },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const challenge = await challengeService.getChallengeById(request.params.id);
     if (!challenge) {
       return reply.status(404).send({
@@ -45,7 +64,21 @@ export const challengeRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // POST /api/challenges/:id/start - Generate dynamic assignment
-  fastify.post<{ Params: { id: string } }>('/challenges/:id/start', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  fastify.post<{ Params: { id: string } }>('/challenges/:id/start', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      tags: ['Challenges'],
+      summary: 'Generate dynamic assignment for challenge',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', example: 'payment_xlm_003' },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const userId = request.user.userId;
     try {
       const assignment = await challengeService.startChallenge(userId, request.params.id);
@@ -61,7 +94,21 @@ export const challengeRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // POST /api/challenges/:id/claim-tokens - Dispense testnet CAMPUS tokens for Challenge 4
-  fastify.post<{ Params: { id: string } }>('/challenges/:id/claim-tokens', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  fastify.post<{ Params: { id: string } }>('/challenges/:id/claim-tokens', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      tags: ['Challenges'],
+      summary: 'Claim testnet CAMPUS tokens from faucet',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', example: 'asset_transfer_004' },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const challengeId = request.params.id;
     if (challengeId !== 'asset_transfer_004') {
       return reply.status(400).send({
@@ -93,7 +140,37 @@ export const challengeRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // POST /api/challenges/:id/submit - Submit evidence & execute row-locked verification
-  fastify.post<{ Params: { id: string } }>('/challenges/:id/submit', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+  fastify.post<{ Params: { id: string } }>('/challenges/:id/submit', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      tags: ['Challenges'],
+      summary: 'Submit evidence and verify challenge completion',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', example: 'payment_xlm_003' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['assignment_id'],
+        properties: {
+          assignment_id: {
+            type: 'string',
+            description: 'UUID of the active challenge assignment',
+            example: 'c20904d0-a337-4ec0-9749-399a0cb96123',
+          },
+          transaction_hash: {
+            type: 'string',
+            description: '64-character transaction hash (optional for wallet and funding challenges)',
+            example: 'c8d29e5c73c509a9b30f2ab45a26559e656ce40fb56a18803af0212a3a39cf13',
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const parseResult = submitSchema.safeParse(request.body);
     if (!parseResult.success) {
       return reply.status(400).send({

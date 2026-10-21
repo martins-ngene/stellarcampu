@@ -9,6 +9,7 @@ export const studentRoutes: FastifyPluginAsync = async (fastify) => {
       tags: ['Students'],
       summary: 'Get student progress and summary metrics',
       description: 'Returns overall challenge completion counters, verified counts, and recent activity.',
+      security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -102,6 +103,7 @@ export const studentRoutes: FastifyPluginAsync = async (fastify) => {
       tags: ['Students'],
       summary: 'Get complete submission history',
       description: 'Returns all past student submissions with verification check breakdowns and explorer links.',
+      security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
