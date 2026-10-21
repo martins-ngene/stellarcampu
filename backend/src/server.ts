@@ -15,6 +15,11 @@ export function buildServer(): FastifyInstance {
     logger: {
       level: process.env.NODE_ENV === 'test' ? 'silent' : 'info',
     },
+    ajv: {
+      customOptions: {
+        strict: false,
+      },
+    },
   });
 
   // Security & Utility Plugins
