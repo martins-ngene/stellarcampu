@@ -177,4 +177,4 @@ The platform is configured for zero-downtime cloud hosting using [Render](https:
 | **Frontend Engineers** | [**`HANDSHAKE.md`**](./HANDSHAKE.md) | Authoritative integration spec with TypeScript interfaces, Stellar Wallets Kit signing flow, challenge instructions, and error handling. |
 | **Backend & DevOps Engineers** | [**`backend/`**](./backend) & [**`render.yaml`**](./render.yaml) | Fastify server architecture, Prisma schema, PostgreSQL row-level locks, and deployment automation. |
 | **Smart Contract Engineers** | [**`contracts/challenge-contract/`**](./contracts/challenge-contract) | Soroban Rust contract source, `#![no_std]` testing harness, and TTL management. |
-| **Reviewers & Portfolio Evaluators** | [**`RESUME.md`**](./RESUME.md) & [**Live Swagger UI**](https://stellarcampus-backend.onrender.com/docs) | Senior engineering tradeoffs (SEP-53 domain separation, PostgreSQL row locks vs Redis, idempotent retry architectures). |
+| **API Docs** | [**Live Swagger UI**](https://stellarcampus-backend.onrender.com/docs) | Senior engineering tradeoffs (SEP-53 domain separation, PostgreSQL row locks vs Redis, idempotent retry architectures). |
