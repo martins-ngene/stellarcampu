@@ -6,16 +6,20 @@ StellarCampus transitions students, beginner developers, and early-career Web3 b
 
 ---
 
-## 🚀 Live Testnet Deployment
+## 🚀 Live Production & Testnet Deployment
 
-The core challenge smart contract is live and initialized on **Stellar Testnet**:
+The platform backend, PostgreSQL database, and challenge smart contract are fully deployed and operational on **Stellar Testnet**:
 
 | Resource | Value / Link |
 | :--- | :--- |
+| **Live Production API** | [`https://stellarcampus-backend.onrender.com/api`](https://stellarcampus-backend.onrender.com/api) |
+| **Live Health Check** | [`https://stellarcampus-backend.onrender.com/health`](https://stellarcampus-backend.onrender.com/health) |
+| **Live Swagger UI** | [`https://stellarcampus-backend.onrender.com/docs`](https://stellarcampus-backend.onrender.com/docs) |
+| **OpenAPI Specification** | [`https://stellarcampus-backend.onrender.com/docs/json`](https://stellarcampus-backend.onrender.com/docs/json) |
 | **Network** | Stellar Testnet (`Test SDF Network ; September 2015`) |
 | **Deployed Contract ID** | [`CA3P7YT764IMXGP7TRLC64KYONLMCRGUJ23GIU646UKOEFSGPVE7UNFK`](https://lab.stellar.org/r/testnet/contract/CA3P7YT764IMXGP7TRLC64KYONLMCRGUJ23GIU646UKOEFSGPVE7UNFK) |
-| **Contract Initialization TX** | [`e0b201e2...`](https://stellar.expert/explorer/testnet/tx/e0b201e20c954298883e0a67a60acda9a1119e1b18e6177de581deb0a02aad16) |
 | **Campus Vault / Payment Destination** | [`GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV`](https://stellar.expert/explorer/testnet/account/GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV) |
+| **CAMPUS Asset Code / Issuer** | `CAMPUS` / [`GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV`](https://stellar.expert/explorer/testnet/account/GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV) |
 | **Horizon RPC** | `https://horizon-testnet.stellar.org` |
 | **Soroban RPC** | `https://soroban-testnet.stellar.org` |
 
@@ -25,9 +29,10 @@ The core challenge smart contract is live and initialized on **Stellar Testnet**
 
 | Document | Purpose |
 | :--- | :--- |
-| **[Swagger UI](http://localhost:3001/docs)** | **Live Interactive API Playground**: Test endpoints directly from the browser (`/docs` or `/documentation`) with Bearer token authentication and schema models. |
+| **[Swagger UI Playground](https://stellarcampus-backend.onrender.com/docs)** | **Live Interactive API Playground**: Test endpoints directly from the browser (`/docs`) with Bearer token authentication and schema models. *(Local: `http://localhost:3001/docs`)* |
 | **[API.md](./API.md)** | **Exhaustive REST API Documentation**: Offline Markdown reference for request/response schemas, status codes, and error bodies for all endpoints. |
 | **[HANDSHAKE.md](./HANDSHAKE.md)** | **Frontend Integration Contract**: TypeScript types, Stellar Wallets Kit signing flow, challenge-by-challenge execution instructions, and UI state mappings. |
+| **[RESUME.md](./RESUME.md)** | **Senior Engineering Portfolio Case Study**: In-depth architecture breakdown, concurrency defense tradeoffs, SEP-53 cryptographic domain separation, and testnet verification results. |
 | **[AGENTS.md](./AGENTS.md)** | **Engineering Mandates & Operating Rules**: Repository constraints, architecture decisions, and git instructions. |
 
 ---
@@ -108,23 +113,68 @@ npm run dev
 cd backend
 npm test
 ```
-*Executes all 10 Vitest tests covering Ed25519 cryptographic authentication, Horizon payment verification rules, and row-level locking concurrency controls.*
+*Executes all 15 Vitest tests covering Ed25519 cryptographic authentication, SEP-53 domain separation, Horizon payment verification rules, asset faucet claiming, and row-level locking concurrency controls.*
 
 ### 4. Running Smart Contract Tests & Building WASM
 ```bash
 cd contracts/challenge-contract
 
-# Run unit tests
+# Run unit tests (6/6 passing)
 cargo test
 
 # Build optimized release WASM
 cargo build --target wasm32-unknown-unknown --release
 ```
 
+### 5. Running End-to-End Live Testnet Simulation (5/5 Challenges)
+Run the automated end-to-end student flow that validates all 5 challenges against live Stellar Testnet:
+```bash
+# Run against live Render production deployment
+cd backend
+npm run test:e2e:prod
+
+# Or run against local dev server (requires backend running on localhost:3001)
+npm run test:e2e
+```
+*Creates a fresh Testnet wallet, claims 10,000 Friendbot XLM, performs cryptographic SEP-53 authentication, creates dynamic assignments, submits on-chain XLM and CAMPUS payments to the vault, executes Soroban contract invocations, and verifies 100% completion.*
+
 ---
 
-## 👥 Team & Stakeholder Summary
+## 🔑 Environment Variables & Testnet Credentials Reference
 
-- **Backend & Smart Contract Lead**: Complete verification engine, database schema, and Soroban contract deployed to Stellar Testnet.
-- **Frontend Engineers**: Refer directly to [HANDSHAKE.md](./HANDSHAKE.md) for endpoint contracts, TypeScript interfaces, and Screen 9 status handling.
-- **Stakeholders & Product Managers**: Refer to [API.md](./API.md) for all supported capabilities and [API metrics](./API.md#4-admin-monitoring) for platform monitoring.
+The following credentials and configuration parameters govern the StellarCampus backend:
+
+| Variable | Environment | Description | Live Testnet Value |
+| :--- | :--- | :--- | :--- |
+| `PORT` | All | HTTP server port | `3001` |
+| `NODE_ENV` | Prod / Dev | Runtime environment mode | `production` / `development` |
+| `DATABASE_URL` | All | PostgreSQL connection string | `postgresql://...` (Render managed or local) |
+| `JWT_SECRET` | All | Bearer token signing secret | Cryptographic 64+ char random string |
+| `STELLAR_NETWORK_PASSPHRASE` | All | Stellar network identifier | `Test SDF Network ; September 2015` |
+| `STELLAR_HORIZON_URL` | All | Horizon RPC endpoint | `https://horizon-testnet.stellar.org` |
+| `STELLAR_SOROBAN_RPC_URL` | All | Soroban RPC endpoint | `https://soroban-testnet.stellar.org` |
+| `SOROBAN_CONTRACT_ID` | All | Deployed challenge smart contract | [`CA3P7YT764IMXGP7TRLC64KYONLMCRGUJ23GIU646UKOEFSGPVE7UNFK`](https://lab.stellar.org/r/testnet/contract/CA3P7YT764IMXGP7TRLC64KYONLMCRGUJ23GIU646UKOEFSGPVE7UNFK) |
+| `CAMPUS_VAULT_ADDRESS` | All | Payment destination address for challenges | [`GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV`](https://stellar.expert/explorer/testnet/account/GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV) |
+| `CAMPUS_ASSET_ISSUER` | All | Public key of the `CAMPUS` test token issuer | [`GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV`](https://stellar.expert/explorer/testnet/account/GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV) |
+| `CAMPUS_ISSUER_SECRET` | Backend | Secret seed of the `CAMPUS` asset issuer for automated platform faucet | Dedicated Testnet funding seed (`SC...`) |
+
+---
+
+## 🚢 Cloud Deployment & Infrastructure (Render)
+
+The platform is configured for zero-downtime cloud hosting using [Render](https://render.com):
+- **Web Service (`srv-dbc8vbbrjlhs73b7n700`)**: Running Fastify on Node.js 22 LTS with automated `prisma db push` and `prisma:seed` execution during deployment.
+- **Database (`dpg-dbc8t3bbc2fs73bmdn4g-a`)**: Managed PostgreSQL 16 Starter instance (`0.1 CPU, 256 MB RAM, 15 GB persistent SSD`) hosting `stellarcampus-db`.
+- **Infrastructure-as-Code Blueprint**: Defined in [`render.yaml`](./render.yaml) for one-click environment replication.
+- **Continuous Integration**: GitHub Actions workflow at [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) builds and tests both Rust Soroban contracts and TypeScript Fastify services on every push.
+
+---
+
+## 🤝 Seamless Handover & Role Guides
+
+| Target Role | Recommended Starting Point | Key Takeaway |
+| :--- | :--- | :--- |
+| **Frontend Engineers** | [**`HANDSHAKE.md`**](./HANDSHAKE.md) | Authoritative integration spec with TypeScript interfaces, Stellar Wallets Kit signing flow, challenge instructions, and error handling. |
+| **Backend & DevOps Engineers** | [**`backend/`**](./backend) & [**`render.yaml`**](./render.yaml) | Fastify server architecture, Prisma schema, PostgreSQL row-level locks, and deployment automation. |
+| **Smart Contract Engineers** | [**`contracts/challenge-contract/`**](./contracts/challenge-contract) | Soroban Rust contract source, `#![no_std]` testing harness, and TTL management. |
+| **Reviewers & Portfolio Evaluators** | [**`RESUME.md`**](./RESUME.md) & [**Live Swagger UI**](https://stellarcampus-backend.onrender.com/docs) | Senior engineering tradeoffs (SEP-53 domain separation, PostgreSQL row locks vs Redis, idempotent retry architectures). |

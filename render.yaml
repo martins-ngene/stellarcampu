@@ -37,4 +37,4 @@ databases:
   - name: stellarcampus-db
     databaseName: stellarcampus
     user: stellarcampus_user
-    plan: free
+    plan: starter # Starter plan ($7/mo with 15GB SSD) or free tier if account has no other active DBs

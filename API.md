@@ -2,10 +2,12 @@
 
 Authoritative API specification for the **StellarCampus** automated on-chain verification backend.
 
-- **Interactive Swagger UI**: [`http://localhost:3001/docs`](http://localhost:3001/docs)
-- **OpenAPI 3.0 JSON Spec**: [`http://localhost:3001/docs/json`](http://localhost:3001/docs/json)
-- **Base URL (Local)**: `http://localhost:3001/api`
-- **Network Environment**: Stellar Testnet
+- **Interactive Swagger UI**: [`https://stellarcampus-backend.onrender.com/docs`](https://stellarcampus-backend.onrender.com/docs) *(Local Dev: `http://localhost:3001/docs`)*
+- **OpenAPI 3.0 JSON Spec**: [`https://stellarcampus-backend.onrender.com/docs/json`](https://stellarcampus-backend.onrender.com/docs/json) *(Local Dev: `http://localhost:3001/docs/json`)*
+- **Base URL (Live Production)**: `https://stellarcampus-backend.onrender.com/api`
+- **Base URL (Local Dev)**: `http://localhost:3001/api`
+- **Live Health Check**: [`https://stellarcampus-backend.onrender.com/health`](https://stellarcampus-backend.onrender.com/health)
+- **Network Environment**: Stellar Testnet (`Test SDF Network ; September 2015`)
 - **Authentication Scheme**: `Authorization: Bearer <jwt_token>`
 
 > [!TIP]

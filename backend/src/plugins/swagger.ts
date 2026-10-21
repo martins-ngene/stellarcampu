@@ -5,10 +5,6 @@ import fastifySwaggerUi from '@fastify/swagger-ui';
 import { env } from '../config/env.js';
 
 const swaggerPlugin: FastifyPluginAsync = async (fastify) => {
-  // Determine server URL conditionally based on environment
-  const serverUrl = process.env.API_BASE_URL || `http://localhost:${env.PORT}`;
-  const serverDescription = env.NODE_ENV === 'production' ? 'Production Gateway' : 'Local Dev Server';
-
   await fastify.register(fastifySwagger, {
     openapi: {
       openapi: '3.0.0',
@@ -24,8 +20,16 @@ const swaggerPlugin: FastifyPluginAsync = async (fastify) => {
       },
       servers: [
         {
-          url: serverUrl,
-          description: serverDescription,
+          url: '/',
+          description: 'Current Server (Auto-detected)',
+        },
+        {
+          url: 'https://stellarcampus-backend.onrender.com',
+          description: 'Live Production Gateway (Render)',
+        },
+        {
+          url: `http://localhost:${env.PORT}`,
+          description: 'Local Development Server',
         },
       ],
       components: {

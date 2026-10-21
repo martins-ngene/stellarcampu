@@ -16,7 +16,9 @@ Ensure your client-side Stellar SDK and wallet connectors use the authoritative 
 | **Friendbot URL** | `https://friendbot.stellar.org` |
 | **Deployed Soroban Contract ID** | `CA3P7YT764IMXGP7TRLC64KYONLMCRGUJ23GIU646UKOEFSGPVE7UNFK` |
 | **Campus Vault / Payment Destination** | `GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV` |
-| **Backend API Base URL** | `http://localhost:3001/api` (Local Dev) / `https://api.testnet.stellarcampus.xyz/api` (Staging) |
+| **CAMPUS Asset Code / Issuer** | `CAMPUS` / `GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV` |
+| **Backend API Base URL** | `https://stellarcampus-backend.onrender.com/api` (Live Production) / `http://localhost:3001/api` (Local Dev) |
+| **Interactive Swagger Playground** | [`https://stellarcampus-backend.onrender.com/docs`](https://stellarcampus-backend.onrender.com/docs) |
 | **Auth Scheme** | `Authorization: Bearer <token>` |
 
 ---
