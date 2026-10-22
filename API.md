@@ -426,4 +426,4 @@ The frontend happy path has been exercised using a real Freighter Testnet wallet
 | 2 XLM payment | `d6744e51f1103968c72e96730cbb077f756d6603bd0eaff4d95735d42f037903` | 5318565 |
 | 10 CAMPUS payment | `8617550dcafca10f4feb7460a8bf044a674ac6b559bdbe38044f8bc684f2278a` | 5318605 |
 
-Detailed evidence is recorded in `docs/integration/2026-10-21-real-wallet-testnet.md`. Remaining backend hardening and acceptance work is tracked in `campus-frontend/INTEGRATION_TODO.md`; a passing happy path does not close those items.
+Detailed evidence is recorded in `docs/integration/2026-10-21-real-wallet-testnet.md`. Remaining backend hardening and acceptance work is tracked in `frontend/INTEGRATION_TODO.md`; a passing happy path does not close those items.

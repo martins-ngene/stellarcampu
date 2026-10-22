@@ -108,7 +108,21 @@ npm run prisma:seed
 npm run dev
 ```
 
-### 3. Running Backend Automated Tests
+### 3. Frontend Setup
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run dev server (http://localhost:3000)
+npm run dev
+
+# Run frontend tests
+npm test
+```
+
+### 4. Running Backend Automated Tests
 ```bash
 cd backend
 npm test
@@ -174,7 +188,7 @@ The platform is configured for zero-downtime cloud hosting using [Render](https:
 
 | Target Role | Recommended Starting Point | Key Takeaway |
 | :--- | :--- | :--- |
-| **Frontend Engineers** | [**`HANDSHAKE.md`**](./HANDSHAKE.md) | Authoritative integration spec with TypeScript interfaces, Stellar Wallets Kit signing flow, challenge instructions, and error handling. |
+| **Frontend Engineers** | [**`frontend/`**](./frontend) & [**`HANDSHAKE.md`**](./HANDSHAKE.md) | Authoritative integration spec with TypeScript interfaces, Stellar Wallets Kit signing flow, challenge instructions, and error handling. |
 | **Backend & DevOps Engineers** | [**`backend/`**](./backend) & [**`render.yaml`**](./render.yaml) | Fastify server architecture, Prisma schema, PostgreSQL row-level locks, and deployment automation. |
 | **Smart Contract Engineers** | [**`contracts/challenge-contract/`**](./contracts/challenge-contract) | Soroban Rust contract source, `#![no_std]` testing harness, and TTL management. |
 | **API Docs** | [**Live Swagger UI**](https://stellarcampus-backend.onrender.com/docs) | Senior engineering tradeoffs (SEP-53 domain separation, PostgreSQL row locks vs Redis, idempotent retry architectures). |
