@@ -17,6 +17,8 @@ contracts/**/target/
 
 # Portfolio & Internal learning documentation
 RESUME.md
+INTEGRATION_TODO.md
+**/INTEGRATION_TODO.md
 
 # Logs & OS artifacts
 *.log
