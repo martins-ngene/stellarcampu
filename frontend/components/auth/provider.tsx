@@ -10,12 +10,17 @@ import {
   type ReactNode,
 } from "react";
 import type { AuthChallenge, LiveSession } from "@/lib/api/auth";
-import { freighterWallet } from "@/lib/api/freighter";
+import { getActiveWallet } from "@/lib/api/wallets";
 export type PendingAuth = {
   address: string;
   challenge: AuthChallenge;
+  walletId?: string;
   username?: string;
   email?: string;
+  displayName?: string;
+  githubProfile?: string;
+  experienceLevel?: string;
+  learningPath?: string;
 };
 type AuthContext = {
   ready: boolean;
@@ -23,6 +28,7 @@ type AuthContext = {
   pending: PendingAuth | null;
   begin(value: PendingAuth): void;
   login(value: LiveSession): void;
+  updateUser(user: Partial<LiveSession["user"]>): void;
   clear(): void;
 };
 const Context = createContext<AuthContext | null>(null);
@@ -48,7 +54,7 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
       if (checking || document.visibilityState === "hidden") return;
       checking = true;
       try {
-        const address = await freighterWallet.getAddress();
+        const address = await getActiveWallet().getAddress();
         if (
           !stopped &&
           generation.current === current &&
@@ -84,6 +90,18 @@ export function LiveAuthProvider({ children }: { children: ReactNode }) {
           generation.current++;
           setPending(null);
           setSession(value);
+        },
+        updateUser(updated) {
+          setSession((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              user: {
+                ...prev.user,
+                ...updated,
+              },
+            };
+          });
         },
         clear,
       }}

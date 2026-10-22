@@ -93,6 +93,67 @@ export const challengeRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
+  // GET /api/challenges/:id/assignment - Resume active in-progress assignment
+  fastify.get<{ Params: { id: string } }>('/challenges/:id/assignment', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      tags: ['Challenges'],
+      summary: 'Get active in-progress assignment for challenge',
+      description: 'Returns the current active unexpired assignment parameters for the authenticated student, or 404 if none exists.',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', example: 'payment_xlm_003' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            assignmentId: { type: 'string' },
+            challengeId: { type: 'string' },
+            assignedParameters: {
+              type: 'object',
+              properties: {
+                destination: { type: 'string' },
+                amount: { type: 'string' },
+                asset: { type: 'string' },
+                assetIssuer: { type: 'string' },
+                memo: { type: 'string' },
+                nonce: { type: 'string' },
+                contractId: { type: 'string' },
+              },
+            },
+            expiresAt: { type: 'string' },
+            createdAt: { type: 'string' },
+          },
+        },
+        404: {
+          type: 'object',
+          properties: {
+            statusCode: { type: 'number' },
+            error: { type: 'string' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const userId = request.user.userId;
+    const challengeId = request.params.id;
+    const assignment = await challengeService.getActiveAssignment(userId, challengeId);
+    if (!assignment) {
+      return reply.status(404).send({
+        statusCode: 404,
+        error: 'Not Found',
+        message: 'No active assignment found for this challenge.',
+      });
+    }
+    return reply.send(assignment);
+  });
+
   // POST /api/challenges/:id/claim-tokens - Dispense testnet CAMPUS tokens for Challenge 4
   fastify.post<{ Params: { id: string } }>('/challenges/:id/claim-tokens', {
     preHandler: [fastify.authenticate],
@@ -197,6 +258,19 @@ export const challengeRoutes: FastifyPluginAsync = async (fastify) => {
         userId,
         txHashToUse,
         async (assignment) => {
+          // Reject cross-challenge assignment usage
+          if (assignment.challengeId !== challengeId) {
+            return {
+              isValid: false,
+              failureReason: `Assignment was issued for challenge '${assignment.challengeId}', but submitted for '${challengeId}'. Cross-challenge assignment use is rejected.`,
+              checks: {
+                assignment_challenge_match: false,
+                assignment_challenge_id: assignment.challengeId,
+                submitted_challenge_id: challengeId,
+              },
+            };
+          }
+
           // Dispatch verification based on challenge ID
           if (challengeId === 'wallet_verify_001') {
             const wallet = await fastify.prisma.wallet.findUnique({
@@ -282,7 +356,9 @@ export const challengeRoutes: FastifyPluginAsync = async (fastify) => {
               cleanHash,
               contractIdToVerify,
               studentWallet,
-              5
+              5,
+              assignment.assignedNonce || undefined,
+              assignment.createdAt
             );
           }
 

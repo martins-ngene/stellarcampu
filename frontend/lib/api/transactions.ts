@@ -14,7 +14,8 @@ import {
 } from "@stellar/stellar-sdk";
 import { Buffer } from "buffer";
 import { parseAssignment, type Assignment } from "./challenges";
-import { freighterWallet, TESTNET_PASSPHRASE } from "./freighter";
+import { TESTNET_PASSPHRASE } from "./freighter";
+import { getActiveWallet } from "./wallets";
 export const HORIZON = "https://horizon-testnet.stellar.org";
 export const SOROBAN_RPC = "https://soroban-testnet.stellar.org";
 export const FRIENDBOT = "https://friendbot.stellar.org";
@@ -153,7 +154,8 @@ export async function executeTransaction({
     parseAssignment(assignment, assignment.challengeId);
   };
   active();
-  if ((await freighterWallet.getAddress()) !== address)
+  const wallet = getActiveWallet();
+  if ((await wallet.getAddress()) !== address)
     throw Error("Wallet account changed. Sign in again.");
   const account = await networkJson(
     `${HORIZON}/accounts/${address}`,
@@ -179,24 +181,37 @@ export async function executeTransaction({
     tx = await server.prepareTransaction(tx, false);
     active();
   }
-  const wallet = await import("@stellar/freighter-api");
-  const network = await wallet.getNetworkDetails();
-  if (network.error || network.networkPassphrase !== TESTNET_PASSPHRASE)
-    throw Error("Switch Freighter to Stellar Testnet before signing.");
-  const signed = await wallet.signTransaction(tx.toXDR(), {
-    networkPassphrase: TESTNET_PASSPHRASE,
-    address,
-  });
+  let signedTxXdr: string;
+  let signerAddress: string | undefined;
+  if (typeof wallet.signTransaction === "function") {
+    const res = await wallet.signTransaction(tx.toXDR(), {
+      networkPassphrase: TESTNET_PASSPHRASE,
+      address,
+    });
+    signedTxXdr = res.signedTxXdr;
+    signerAddress = res.signerAddress;
+  } else {
+    const freighter = await import("@stellar/freighter-api");
+    const network = await freighter.getNetworkDetails();
+    if (network.error || network.networkPassphrase !== TESTNET_PASSPHRASE)
+      throw Error("Switch Freighter to Stellar Testnet before signing.");
+    const signed = await freighter.signTransaction(tx.toXDR(), {
+      networkPassphrase: TESTNET_PASSPHRASE,
+      address,
+    });
+    if (signed.error || !signed.signedTxXdr)
+      throw Error(signed.error?.message || "Transaction signing was declined.");
+    signedTxXdr = signed.signedTxXdr;
+    signerAddress = signed.signerAddress;
+  }
   active();
-  if (signed.error || !signed.signedTxXdr)
-    throw Error(signed.error?.message || "Transaction signing was declined.");
   if (
-    signed.signerAddress !== address ||
-    (await freighterWallet.getAddress()) !== address
+    (signerAddress && signerAddress !== address) ||
+    (await wallet.getAddress()) !== address
   )
     throw Error("Wallet account changed. Transaction was not submitted.");
   const envelope = TransactionBuilder.fromXDR(
-    signed.signedTxXdr,
+    signedTxXdr,
     Networks.TESTNET,
   );
   if (

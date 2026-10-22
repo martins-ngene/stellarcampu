@@ -14,6 +14,7 @@ export class ApiError extends Error {
 export async function apiRequest(
   path: string,
   options: {
+    method?: string;
     token?: string;
     body?: unknown;
     signal?: AbortSignal;
@@ -27,7 +28,7 @@ export async function apiRequest(
   const timer = setTimeout(abort, options.timeout ?? 45000);
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
-      method: options.body === undefined ? "GET" : "POST",
+      method: options.method ?? (options.body === undefined ? "GET" : "POST"),
       headers: {
         Accept: "application/json",
         ...(options.body !== undefined

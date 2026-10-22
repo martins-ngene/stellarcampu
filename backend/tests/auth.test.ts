@@ -29,9 +29,37 @@ class MockPrismaClient {
         if (item) Object.assign(item, data);
         return item;
       },
+      updateMany: async ({ where, data }: any) => {
+        let count = 0;
+        for (const n of nonces) {
+          if (n.id === where.id && (where.used === undefined || n.used === where.used)) {
+            Object.assign(n, data);
+            count++;
+          }
+        }
+        return { count };
+      },
     };
 
     this.user = {
+      findUnique: async ({ where }: any) => {
+        const u = users.find(
+          (item) => (where.id && item.id === where.id) || (where.email && item.email === where.email) || (where.username && item.username === where.username)
+        );
+        if (!u) return null;
+        const userWallets = wallets.filter((w) => w.userId === u.id);
+        return { ...u, wallets: userWallets };
+      },
+      create: async ({ data }: any) => {
+        const item = { id: `user_${users.length + 1}`, ...data, role: 'STUDENT', createdAt: new Date(), updatedAt: new Date() };
+        users.push(item);
+        return item;
+      },
+      update: async ({ where, data }: any) => {
+        const u = users.find((item) => item.id === where.id);
+        if (u) Object.assign(u, data);
+        return u;
+      },
       upsert: async ({ create }: any) => {
         const item = { id: `user_${users.length + 1}`, ...create, role: 'STUDENT', createdAt: new Date(), updatedAt: new Date() };
         users.push(item);
@@ -136,5 +164,74 @@ describe('AuthService Cryptographic Verification', () => {
     await expect(
       authService.verifySignature(keypair.publicKey(), attackerSignature)
     ).rejects.toThrow();
+  });
+
+  it('atomically rejects replay attempts of an already consumed challenge nonce', async () => {
+    const keypair = Keypair.random();
+    const { message } = await authService.generateNonce(keypair.publicKey());
+
+    const messageBuffer = Buffer.from(message, 'utf-8');
+    const signature = Buffer.from(keypair.sign(messageBuffer)).toString('base64');
+
+    // First verification succeeds
+    const firstAttempt = await authService.verifySignature(keypair.publicKey(), signature);
+    expect(firstAttempt.user).toBeDefined();
+
+    // Replay attempt with same signature fails because nonce is consumed
+    await expect(
+      authService.verifySignature(keypair.publicKey(), signature)
+    ).rejects.toThrow(/already been consumed|No valid authentication challenge found/i);
+  });
+
+  it('prevents account hijacking via user-supplied email for registered wallets', async () => {
+    // 1. Legitimate user creates account with wallet A and email
+    const victimKeypair = Keypair.random();
+    const { message: victimMessage } = await authService.generateNonce(victimKeypair.publicKey());
+    const victimSig = Buffer.from(victimKeypair.sign(Buffer.from(victimMessage, 'utf-8'))).toString('base64');
+
+    await authService.verifySignature(
+      victimKeypair.publicKey(),
+      victimSig,
+      'legit_student',
+      'registered@stellarcampus.xyz'
+    );
+
+    // 2. Attacker tries to connect new wallet B and supply victim's registered email
+    const attackerKeypair = Keypair.random();
+    const { message: attackerMessage } = await authService.generateNonce(attackerKeypair.publicKey());
+    const attackerSig = Buffer.from(attackerKeypair.sign(Buffer.from(attackerMessage, 'utf-8'))).toString('base64');
+
+    await expect(
+      authService.verifySignature(
+        attackerKeypair.publicKey(),
+        attackerSig,
+        'attacker_user',
+        'registered@stellarcampus.xyz'
+      )
+    ).rejects.toThrow(/already registered with a verified wallet/i);
+  });
+
+  it('persists display name, github profile, and experience level metadata', async () => {
+    const keypair = Keypair.random();
+    const { message } = await authService.generateNonce(keypair.publicKey());
+    const sig = Buffer.from(keypair.sign(Buffer.from(message, 'utf-8'))).toString('base64');
+
+    const result = await authService.verifySignature(
+      keypair.publicKey(),
+      sig,
+      'full_profile_dev',
+      'dev@stellarcampus.dev',
+      {
+        displayName: 'Alex Stellar',
+        githubProfile: 'https://github.com/alexstellar',
+        experienceLevel: 'advanced',
+        learningPath: 'smart_contracts',
+      }
+    );
+
+    expect(result.user.displayName).toBe('Alex Stellar');
+    expect(result.user.githubProfile).toBe('https://github.com/alexstellar');
+    expect(result.user.experienceLevel).toBe('advanced');
+    expect(result.user.learningPath).toBe('smart_contracts');
   });
 });

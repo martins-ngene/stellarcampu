@@ -8,17 +8,26 @@ export type LiveUser = {
   username: string;
   displayName: string;
   email: string;
+  githubProfile?: string | null;
+  experienceLevel?: "beginner" | "intermediate" | "advanced" | "expert" | null;
+  learningPath?: string | null;
   stellarAddress: string;
   isVerified: true;
   role: string;
 };
 export type LiveSession = { token: string; user: LiveUser };
 export type SigningWallet = {
+  id?: string;
+  name?: string;
   getAddress(): Promise<string>;
   sign(
     message: string,
     address: string,
   ): Promise<{ signature: string; address: string }>;
+  signTransaction?(
+    xdr: string,
+    options: { address: string; networkPassphrase: string },
+  ): Promise<{ signedTxXdr: string; signerAddress?: string }>;
 };
 export function parseChallenge(value: unknown): AuthChallenge {
   const data = value as AuthChallenge;

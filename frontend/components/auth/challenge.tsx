@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiRequest, ApiError } from "@/lib/api/client";
 import {
   CHALLENGE_IDS,
+  getActiveAssignment,
   historyResult,
   parseAssignment,
   submitEvidence,
@@ -148,6 +149,20 @@ export function LiveChallengeWorkspace({
             e instanceof Error ? e.message : "Cannot load this challenge.",
           );
       });
+
+    if (!saved.assignment) {
+      void getActiveAssignment(id, session.token, abort.signal)
+        .then((existing) => {
+          if (existing && !abort.signal.aborted) {
+            patchMemory(session, id, { assignment: existing });
+            setAssignment(existing);
+          }
+        })
+        .catch(() => {
+          // If no active assignment or 404, start button remains ready
+        });
+    }
+
     return () => abort.abort();
   }, [id, session, retry]);
   const expired = !!assignment && Date.parse(assignment.expiresAt) <= clock;

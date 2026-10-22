@@ -27,7 +27,18 @@ export class AuthService {
   /**
    * Verifies the ed25519 signature of the challenge nonce using the public key
    */
-  async verifySignature(stellarAddress: string, signature: string, username?: string, email?: string) {
+  async verifySignature(
+    stellarAddress: string,
+    signature: string,
+    username?: string,
+    email?: string,
+    metadata?: {
+      displayName?: string;
+      githubProfile?: string;
+      experienceLevel?: string;
+      learningPath?: string;
+    }
+  ) {
     // 1. Fetch latest active nonce for address
     const challenge = await this.prisma.nonceChallenge.findFirst({
       where: {
@@ -90,32 +101,64 @@ export class AuthService {
       throw new Error(`Ed25519 verification failed: ${err.message || 'Signature mismatch'}`);
     }
 
-    // 3. Mark challenge nonce as used
-    await this.prisma.nonceChallenge.update({
-      where: { id: challenge.id },
+    // 3. Atomically consume the nonce challenge to prevent replay attacks
+    const updateResult = await this.prisma.nonceChallenge.updateMany({
+      where: {
+        id: challenge.id,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
       data: { used: true },
     });
 
-    // 4. Find or create User and Wallet
+    if (updateResult.count === 0) {
+      throw new Error('Authentication challenge has already been consumed or has expired');
+    }
+
+    // 4. Find or create User and Wallet with ownership & anti-hijacking defense
     let wallet = await this.prisma.wallet.findUnique({
       where: { stellarAddress },
       include: { user: true },
     });
 
-    let user;
+    let user: any;
     if (!wallet) {
-      const generatedUsername = username || `builder_${stellarAddress.slice(0, 6).toLowerCase()}`;
-      const generatedEmail = email || `${generatedUsername}@stellarcampus.dev`;
+      const generatedUsername = username?.trim() || `builder_${stellarAddress.slice(0, 6).toLowerCase()}`;
+      const targetEmail = email && email.trim() ? email.trim().toLowerCase() : `${generatedUsername}@stellarcampus.dev`;
 
-      user = await this.prisma.user.upsert({
-        where: { email: generatedEmail },
-        update: {},
-        create: {
-          email: generatedEmail,
-          username: generatedUsername,
-          displayName: generatedUsername,
-        },
+      // Check if an existing account owns this email
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: targetEmail },
+        include: { wallets: true },
       });
+
+      if (existingUser) {
+        const hasVerifiedWallets = existingUser.wallets.some((w: any) => w.isVerified);
+        if (hasVerifiedWallets) {
+          throw new Error('An account with this email is already registered with a verified wallet. Please sign in with that wallet.');
+        }
+        user = existingUser;
+      } else {
+        // Ensure username is unique
+        let finalUsername = generatedUsername;
+        const existingUsername = await this.prisma.user.findUnique({
+          where: { username: finalUsername },
+        });
+        if (existingUsername) {
+          finalUsername = `${generatedUsername}_${stellarAddress.slice(0, 4).toLowerCase()}`;
+        }
+
+        user = await this.prisma.user.create({
+          data: {
+            email: targetEmail,
+            username: finalUsername,
+            displayName: metadata?.displayName?.trim() || finalUsername,
+            githubProfile: metadata?.githubProfile?.trim() || null,
+            experienceLevel: metadata?.experienceLevel || null,
+            learningPath: metadata?.learningPath || null,
+          },
+        });
+      }
 
       wallet = await this.prisma.wallet.create({
         data: {
@@ -134,6 +177,28 @@ export class AuthService {
           data: { isVerified: true, verifiedAt: new Date() },
         });
       }
+
+      if (metadata && (metadata.displayName || metadata.githubProfile || metadata.experienceLevel || metadata.learningPath)) {
+        const updateData: any = {};
+        if (metadata.displayName && (!user.displayName || user.displayName.startsWith('builder_'))) {
+          updateData.displayName = metadata.displayName.trim();
+        }
+        if (metadata.githubProfile && !user.githubProfile) {
+          updateData.githubProfile = metadata.githubProfile.trim();
+        }
+        if (metadata.experienceLevel && !user.experienceLevel) {
+          updateData.experienceLevel = metadata.experienceLevel;
+        }
+        if (metadata.learningPath && !user.learningPath) {
+          updateData.learningPath = metadata.learningPath;
+        }
+        if (Object.keys(updateData).length > 0) {
+          user = await this.prisma.user.update({
+            where: { id: user.id },
+            data: updateData,
+          });
+        }
+      }
     }
 
     // 5. Automatically record Challenge 1 completion in StudentProgress
@@ -142,7 +207,6 @@ export class AuthService {
         where: { id: 'wallet_verify_001' },
       });
       if (challenge1) {
-        // Create submission and mark challenge 1 verified
         const dummyAssignment = await this.prisma.challengeAssignment.upsert({
           where: { id: challenge.id },
           update: { status: 'COMPLETED' },
@@ -196,6 +260,9 @@ export class AuthService {
         username: user.username,
         displayName: user.displayName,
         email: user.email,
+        githubProfile: user.githubProfile || null,
+        experienceLevel: user.experienceLevel || null,
+        learningPath: user.learningPath || null,
         stellarAddress: wallet.stellarAddress,
         isVerified: true,
         role: user.role,

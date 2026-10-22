@@ -150,3 +150,24 @@ export async function historyResult(
   );
   return row ? normalizeResult(row) : null;
 }
+export async function getActiveAssignment(
+  id: string,
+  token: string,
+  signal?: AbortSignal,
+): Promise<Assignment | null> {
+  try {
+    const data = await apiRequest(
+      `/challenges/${encodeURIComponent(id)}/assignment`,
+      {
+        token,
+        signal,
+      },
+    );
+    return parseAssignment(data, id);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) {
+      return null;
+    }
+    throw e;
+  }
+}

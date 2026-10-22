@@ -114,4 +114,39 @@ export class ChallengeService {
       expiresAt: assignment.expiresAt.toISOString(),
     };
   }
+
+  /**
+   * Retrieves the current active, unexpired assignment for a user on a given challenge, if one exists
+   */
+  async getActiveAssignment(userId: string, challengeId: string) {
+    const assignment = await this.prisma.challengeAssignment.findFirst({
+      where: {
+        userId,
+        challengeId,
+        status: 'ACTIVE',
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!assignment) {
+      return null;
+    }
+
+    return {
+      assignmentId: assignment.id,
+      challengeId: assignment.challengeId,
+      assignedParameters: {
+        destination: assignment.assignedDestination,
+        amount: assignment.assignedAmount,
+        asset: assignment.assignedAsset,
+        assetIssuer: assignment.challengeId === 'asset_transfer_004' ? env.CAMPUS_ASSET_ISSUER : undefined,
+        memo: assignment.assignedMemo,
+        nonce: assignment.assignedNonce,
+        contractId: assignment.assignedContractId,
+      },
+      expiresAt: assignment.expiresAt.toISOString(),
+      createdAt: assignment.createdAt.toISOString(),
+    };
+  }
 }

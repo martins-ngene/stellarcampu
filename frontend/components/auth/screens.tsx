@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { apiRequest } from "@/lib/api/client";
 import { authenticateWallet, parseChallenge } from "@/lib/api/auth";
 import { connectFreighter, freighterWallet } from "@/lib/api/freighter";
+import { connectWallet, getWallet, type WalletId } from "@/lib/api/wallets";
 import { safeChallengeDestination } from "@/lib/auth-navigation";
 import { useLiveAuth } from "./provider";
 
@@ -46,8 +47,12 @@ export function LiveAuthScreen({ signup = false }: { signup?: boolean }) {
   const router = useRouter();
   const search = useSearchParams();
   const next = safeChallengeDestination(search.get("next"));
+  const [selectedWallet, setSelectedWallet] = useState<WalletId>("freighter");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [githubProfile, setGithubProfile] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const operation = useRef(false);
@@ -61,7 +66,7 @@ export function LiveAuthScreen({ signup = false }: { signup?: boolean }) {
     const abort = new AbortController();
     controller.current = abort;
     try {
-      const address = await connectFreighter();
+      const { address } = await connectWallet(selectedWallet);
       if (abort.signal.aborted) return;
       const challenge = parseChallenge(
         await apiRequest("/auth/challenge", {
@@ -73,7 +78,16 @@ export function LiveAuthScreen({ signup = false }: { signup?: boolean }) {
       auth.begin({
         address,
         challenge,
-        ...(signup ? { username: username.trim(), email: email.trim() } : {}),
+        walletId: selectedWallet,
+        ...(signup
+          ? {
+              username: username.trim(),
+              email: email.trim(),
+              ...(displayName.trim() ? { displayName: displayName.trim() } : {}),
+              ...(githubProfile.trim() ? { githubProfile: githubProfile.trim() } : {}),
+              ...(experienceLevel ? { experienceLevel } : {}),
+            }
+          : {}),
       });
       router.push(
         `/onboarding/verify${next ? `?next=${encodeURIComponent(next)}` : ""}`,
@@ -200,6 +214,8 @@ export function LiveAuthScreen({ signup = false }: { signup?: boolean }) {
                       placeholder="e.g. Amina Patel"
                       autoComplete="name"
                       name="displayName"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
                       disabled={busy}
                       aria-describedby="profile-persistence-note"
                     />
@@ -241,12 +257,11 @@ export function LiveAuthScreen({ signup = false }: { signup?: boolean }) {
                   <select
                     name="experience"
                     disabled={busy}
-                    defaultValue=""
+                    value={experienceLevel}
+                    onChange={(e) => setExperienceLevel(e.target.value)}
                     aria-describedby="profile-persistence-note"
                   >
-                    <option value="" disabled>
-                      Select your experience level
-                    </option>
+                    <option value="">Select your experience level</option>
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
                     <option value="advanced">Advanced</option>
@@ -254,7 +269,7 @@ export function LiveAuthScreen({ signup = false }: { signup?: boolean }) {
                   </select>
                   <small>
                     New to coding, learning to build, or already developing? All
-                    welcome. Your selection is not saved to your profile yet.
+                    welcome.
                   </small>
                 </label>
                 <label className="auth-field">
@@ -263,6 +278,8 @@ export function LiveAuthScreen({ signup = false }: { signup?: boolean }) {
                     type="url"
                     placeholder="https://github.com/your-username"
                     name="githubProfile"
+                    value={githubProfile}
+                    onChange={(e) => setGithubProfile(e.target.value)}
                     disabled={busy}
                     aria-describedby="profile-persistence-note"
                   />
@@ -274,9 +291,8 @@ export function LiveAuthScreen({ signup = false }: { signup?: boolean }) {
                   id="profile-persistence-note"
                   className="auth-persistence-note"
                 >
-                  Username and email are saved when you verify. Display name,
-                  experience and GitHub can be entered here but are not saved to
-                  your profile yet.
+                  Your display name, experience level, and GitHub profile will be
+                  saved to your verified developer profile.
                 </p>
               </>
             )}
@@ -294,12 +310,39 @@ export function LiveAuthScreen({ signup = false }: { signup?: boolean }) {
                 Your wallet links your profile to the practical challenges you
                 complete on Testnet.
               </p>
+              <div className="auth-wallet-selector" role="tablist" aria-label="Select Stellar wallet">
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-freighter"
+                  aria-selected={selectedWallet === "freighter"}
+                  className={`auth-wallet-tab ${selectedWallet === "freighter" ? "active" : ""}`}
+                  onClick={() => setSelectedWallet("freighter")}
+                  disabled={busy}
+                >
+                  Freighter (Recommended)
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-xbull"
+                  aria-selected={selectedWallet === "xbull"}
+                  className={`auth-wallet-tab ${selectedWallet === "xbull" ? "active" : ""}`}
+                  onClick={() => setSelectedWallet("xbull")}
+                  disabled={busy}
+                >
+                  xBull Wallet
+                </button>
+              </div>
               <button className="p-button p-primary p-full" disabled={busy}>
-                {busy ? "Connecting…" : "Connect Stellar Wallet"}
+                {busy
+                  ? "Connecting…"
+                  : `Connect ${selectedWallet === "xbull" ? "xBull Wallet" : "Freighter"}`}
               </button>
               <small>
-                Use Freighter on Stellar Testnet. Next, you’ll sign a challenge
-                to prove wallet ownership.
+                {selectedWallet === "xbull"
+                  ? "Requires xBull extension or web app on Stellar Testnet. Next, you’ll sign a challenge to prove wallet ownership."
+                  : "Use Freighter on Stellar Testnet. Next, you’ll sign a challenge to prove wallet ownership."}
               </small>
             </div>
             {error && (
@@ -365,7 +408,7 @@ export function LiveVerifyScreen() {
       const session = await authenticateWallet({
         address: pending.address,
         challenge: pending.challenge,
-        wallet: freighterWallet,
+        wallet: getWallet(pending.walletId || "freighter"),
         verify: (signature) => {
           if (abort.signal.aborted) throw Error("Request cancelled.");
           return apiRequest("/auth/verify", {
@@ -374,6 +417,10 @@ export function LiveVerifyScreen() {
               signature,
               ...(pending.username ? { username: pending.username } : {}),
               ...(pending.email ? { email: pending.email } : {}),
+              ...(pending.displayName ? { displayName: pending.displayName } : {}),
+              ...(pending.githubProfile ? { githubProfile: pending.githubProfile } : {}),
+              ...(pending.experienceLevel ? { experienceLevel: pending.experienceLevel } : {}),
+              ...(pending.learningPath ? { learningPath: pending.learningPath } : {}),
             },
             signal: abort.signal,
           });

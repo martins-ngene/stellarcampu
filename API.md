@@ -219,6 +219,40 @@ Generates a time-bounded dynamic challenge assignment with a unique memo or nonc
 
 ---
 
+### `GET /api/challenges/:id/assignment`
+Retrieves the current active, unexpired assignment for the authenticated student on a specific challenge. Enables page reloads to resume in-progress challenges without reissuing parameters or discarding broadcast references.
+
+- **Auth Required**: Yes (`Authorization: Bearer <token>`)
+
+#### Response `200 OK`
+```json
+{
+  "assignmentId": "a92e104b-3d61-412e-a34e-09f182cba541",
+  "challengeId": "payment_xlm_003",
+  "assignedParameters": {
+    "destination": "GAII65YQHVIE4Q2OYG73CRIQZPDN4DJNHN4W6WRUVSJBXEVWPVZ4QKAV",
+    "amount": "2.0000000",
+    "asset": "XLM",
+    "memo": "SC-491029",
+    "nonce": "7a8b9c0d1e2f3a4b...",
+    "contractId": "CA3P7YT764IMXGP7TRLC64KYONLMCRGUJ23GIU646UKOEFSGPVE7UNFK"
+  },
+  "expiresAt": "2026-10-22T14:15:00.000Z",
+  "createdAt": "2026-10-22T13:15:00.000Z"
+}
+```
+
+#### Error `404 Not Found`
+```json
+{
+  "statusCode": 404,
+  "error": "Not Found",
+  "message": "No active assignment found for this challenge."
+}
+```
+
+---
+
 ### `POST /api/challenges/:id/claim-tokens`
 Dispenses 20.0 testnet `CAMPUS` tokens to the authenticated student's wallet so they can perform Challenge 4 (`asset_transfer_004`).
 - **Preconditions**:
@@ -367,6 +401,67 @@ Returns exhaustive history of all past student submissions with full check break
       "explorer_url": "https://stellar.expert/explorer/testnet/tx/3e9b72a4..."
     }
   ]
+}
+```
+
+---
+
+### `GET /api/students/me/profile`
+Returns the authenticated student's profile, including display name, GitHub profile URL, experience level, and preferred learning path.
+
+- **Auth Required**: Yes (`Authorization: Bearer <token>`)
+
+#### Response `200 OK`
+```json
+{
+  "id": "c1f7a28b-...",
+  "username": "alex_builder",
+  "displayName": "Alex Stellar",
+  "email": "alex@stellar.org",
+  "githubProfile": "https://github.com/alexstellar",
+  "experienceLevel": "advanced",
+  "learningPath": "smart_contracts",
+  "stellarAddress": "GBBD47IF6LWK7P7MDEVTESTNETSTUDENT123456789012345678901234",
+  "isVerified": true,
+  "role": "STUDENT",
+  "createdAt": "2026-10-20T13:00:00.000Z"
+}
+```
+
+---
+
+### `PATCH /api/students/me/profile`
+Updates the authenticated student's display name, email, GitHub profile URL, experience level, and learning path.
+
+- **Auth Required**: Yes (`Authorization: Bearer <token>`)
+- **Headers**: `Content-Type: application/json`
+
+#### Request Body
+```json
+{
+  "displayName": "Alex Stellar",
+  "email": "alex@stellar.org",
+  "githubProfile": "https://github.com/alexstellar",
+  "experienceLevel": "advanced",
+  "learningPath": "smart_contracts"
+}
+```
+
+#### Response `200 OK`
+```json
+{
+  "id": "c1f7a28b-...",
+  "username": "alex_builder",
+  "displayName": "Alex Stellar",
+  "email": "alex@stellar.org",
+  "githubProfile": "https://github.com/alexstellar",
+  "experienceLevel": "advanced",
+  "learningPath": "smart_contracts",
+  "stellarAddress": "GBBD47IF6LWK7P7MDEVTESTNETSTUDENT123456789012345678901234",
+  "isVerified": true,
+  "role": "STUDENT",
+  "createdAt": "2026-10-20T13:00:00.000Z",
+  "updatedAt": "2026-10-22T13:30:00.000Z"
 }
 ```
 

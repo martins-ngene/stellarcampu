@@ -180,6 +180,40 @@
   line-height: 1.7;
   margin-top: 12px;
 }
+.auth-wallet-selector {
+  display: flex;
+  gap: 6px;
+  margin: 14px 0 16px;
+  background: var(--p-card, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--p-line, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  padding: 4px;
+}
+.auth-wallet-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--p-muted, #94a3b8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.auth-wallet-tab:hover:not(:disabled) {
+  color: var(--p-fg, #ffffff);
+  background: rgba(139, 92, 246, 0.08);
+}
+.auth-wallet-tab.active {
+  background: #8b5cf6;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
 .auth-safe-note {
   display: flex;
   gap: 12px;

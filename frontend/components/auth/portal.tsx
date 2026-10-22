@@ -18,6 +18,7 @@ import { Dashboard, DeveloperProgress } from "./dashboard";
 import { ChallengeIntroduction } from "./learning-workspace";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LiveFrame } from "./screens";
+import { ProfileWorkspace } from "./profile-workspace";
 
 type Data = {
   progress: LiveProgress;
@@ -257,15 +258,7 @@ export function LivePortal() {
             />
           )}
           {section === "profile" && (
-            <section className="p-panel p-registration">
-              <h2>{session.user.displayName}</h2>
-              <p>@{session.user.username}</p>
-              <p>{session.user.email}</p>
-              <p className="p-field-help">
-                Profile editing and learning-path persistence are awaiting
-                backend endpoints.
-              </p>
-            </section>
+            <ProfileWorkspace session={session} />
           )}
           {section === "settings" && (
             <section className="ds-card ds-settings">

@@ -21,9 +21,16 @@ export class SorobanService {
   }
 
   /**
-   * Evaluates Soroban transaction for contract invocation and authorized student identity
+   * Evaluates Soroban transaction for contract invocation, authorized student identity, evidence nonce, and freshness
    */
-  async inspectContractInvocation(txHash: string, expectedContractId: string, expectedStudent: string, expectedChallengeId: number) {
+  async inspectContractInvocation(
+    txHash: string,
+    expectedContractId: string,
+    expectedStudent: string,
+    expectedChallengeId: number,
+    expectedNonce?: string,
+    assignmentCreatedAt?: Date | string
+  ) {
     const tx = await this.getTransaction(txHash);
 
     if (tx.status === rpc.Api.GetTransactionStatus.NOT_FOUND) {
@@ -56,7 +63,9 @@ export class SorobanService {
     let functionMatches = false;
     let studentAuthorized = false;
     let challengeIdMatches = false;
+    let nonceMatches = expectedNonce ? false : true;
     let foundContractId = '';
+    let foundNonce = '';
 
     function getField(obj: any, key: string): any {
       if (!obj) return undefined;
@@ -107,6 +116,24 @@ export class SorobanService {
               challengeIdMatches = true;
             }
           }
+
+          if (args.length >= 3) {
+            // Arg 2: evidence_nonce BytesN<32>
+            const nativeNonce = scValToNative(args[2]);
+            if (nativeNonce) {
+              foundNonce = Buffer.from(nativeNonce).toString('hex').toLowerCase();
+              if (expectedNonce) {
+                const normalizedExpected = expectedNonce.trim().toLowerCase();
+                if (foundNonce === normalizedExpected) {
+                  nonceMatches = true;
+                }
+              } else {
+                nonceMatches = true;
+              }
+            }
+          } else if (!expectedNonce) {
+            nonceMatches = true;
+          }
         }
 
         // Also check authorized auth entries in the host function
@@ -125,6 +152,17 @@ export class SorobanService {
       }
     }
 
+    // Verify freshness against assignment creation
+    let freshnessMatches = true;
+    if (assignmentCreatedAt) {
+      const assignmentTimeMs = new Date(assignmentCreatedAt).getTime();
+      const txTimeMs = tx.createdAt ? Number(tx.createdAt) * 1000 : Date.now();
+      // Allow 5 minutes clock skew before assignment creation
+      if (txTimeMs < assignmentTimeMs - 5 * 60 * 1000) {
+        freshnessMatches = false;
+      }
+    }
+
     const checks = {
       transaction_exists: true,
       transaction_succeeded: true,
@@ -132,6 +170,8 @@ export class SorobanService {
       function_matches: functionMatches,
       student_authorized: studentAuthorized,
       challenge_id_matches: challengeIdMatches,
+      nonce_matches: nonceMatches,
+      freshness_matches: freshnessMatches,
     };
 
     if (!contractMatches) {
@@ -162,6 +202,22 @@ export class SorobanService {
       return {
         isValid: false,
         failureReason: `Challenge ID argument does not match expected challenge (${expectedChallengeId}).`,
+        checks,
+      };
+    }
+
+    if (!nonceMatches) {
+      return {
+        isValid: false,
+        failureReason: `Soroban evidence nonce does not match assignment nonce (${expectedNonce?.slice(0, 8)}...).`,
+        checks,
+      };
+    }
+
+    if (!freshnessMatches) {
+      return {
+        isValid: false,
+        failureReason: 'Transaction was created before the current challenge assignment was generated.',
         checks,
       };
     }

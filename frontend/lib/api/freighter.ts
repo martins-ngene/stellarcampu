@@ -1,6 +1,8 @@
+import { StrKey } from "@stellar/stellar-sdk";
 import type { SigningWallet } from "./auth";
 export const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
-const validAddress = (address: string) => /^G[A-Z2-7]{55}$/.test(address);
+export const isValidStellarAddress = (address: unknown): address is string =>
+  typeof address === "string" && StrKey.isValidEd25519PublicKey(address);
 async function sdk() {
   return import("@stellar/freighter-api");
 }
@@ -21,7 +23,7 @@ export async function connectFreighter(): Promise<string> {
   const access = await api.requestAccess();
   if (access.error)
     throw new Error(access.error.message || "Wallet access was declined.");
-  if (!validAddress(access.address))
+  if (!isValidStellarAddress(access.address))
     throw new Error(
       "Freighter did not return a valid Stellar account. Unlock your wallet and try again.",
     );
@@ -29,9 +31,11 @@ export async function connectFreighter(): Promise<string> {
   return access.address;
 }
 export const freighterWallet: SigningWallet = {
+  id: "freighter",
+  name: "Freighter",
   async getAddress() {
     const result = await (await sdk()).getAddress();
-    if (result.error || !validAddress(result.address))
+    if (result.error || !isValidStellarAddress(result.address))
       throw new Error("Wallet access is unavailable. Please reconnect.");
     return result.address;
   },
@@ -50,5 +54,22 @@ export const freighterWallet: SigningWallet = {
         : result.signedMessage?.toString("base64");
     if (!signature) throw new Error("No signature returned. Please try again.");
     return { signature, address: result.signerAddress };
+  },
+  async signTransaction(xdr, { address, networkPassphrase }) {
+    await assertTestnet();
+    const api = await sdk();
+    const result = await api.signTransaction(xdr, {
+      address,
+      networkPassphrase,
+    });
+    if (result.error || !result.signedTxXdr) {
+      throw new Error(
+        result.error?.message || "Transaction signing was declined.",
+      );
+    }
+    return {
+      signedTxXdr: result.signedTxXdr,
+      signerAddress: result.signerAddress,
+    };
   },
 };

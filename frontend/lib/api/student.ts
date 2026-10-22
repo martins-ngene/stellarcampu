@@ -74,3 +74,50 @@ export function safeExplorer(url: string | null | undefined): string | null {
     return null;
   }
 }
+import { apiRequest } from "./client";
+
+export type StudentProfile = {
+  id: string;
+  username: string;
+  displayName: string;
+  email: string;
+  githubProfile: string | null;
+  experienceLevel: "beginner" | "intermediate" | "advanced" | "expert" | null;
+  learningPath: string | null;
+  stellarAddress: string;
+  isVerified: boolean;
+  role: string;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export async function getProfile(
+  token: string,
+  signal?: AbortSignal,
+): Promise<StudentProfile> {
+  const data = await apiRequest("/students/me/profile", {
+    token,
+    signal,
+  });
+  return data as StudentProfile;
+}
+
+export async function updateProfile(
+  profile: {
+    displayName?: string;
+    githubProfile?: string | null;
+    experienceLevel?: "beginner" | "intermediate" | "advanced" | "expert" | null;
+    learningPath?: string | null;
+    email?: string;
+  },
+  token: string,
+  signal?: AbortSignal,
+): Promise<StudentProfile> {
+  const data = await apiRequest("/students/me/profile", {
+    method: "PATCH",
+    token,
+    body: profile,
+    signal,
+  });
+  return data as StudentProfile;
+}

@@ -11,6 +11,14 @@ const verifySchema = z.object({
   signature: z.string().min(1),
   username: z.string().optional(),
   email: z.union([z.string().email(), z.literal('')]).optional(),
+  displayName: z.string().optional(),
+  display_name: z.string().optional(),
+  githubProfile: z.string().optional(),
+  github_profile: z.string().optional(),
+  experienceLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
+  experience_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
+  learningPath: z.string().optional(),
+  learning_path: z.string().optional(),
 });
 
 const errorSchema = {
@@ -110,6 +118,23 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
             description: 'Optional email',
             example: 'student@stellarcampus.xyz',
           },
+          displayName: {
+            type: 'string',
+            description: 'Optional display name',
+          },
+          githubProfile: {
+            type: 'string',
+            description: 'Optional GitHub profile URL',
+          },
+          experienceLevel: {
+            type: 'string',
+            enum: ['beginner', 'intermediate', 'advanced', 'expert'],
+            description: 'Optional experience level',
+          },
+          learningPath: {
+            type: 'string',
+            description: 'Optional learning path selection',
+          },
         },
       },
       response: {
@@ -124,6 +149,9 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
                 username: { type: 'string' },
                 displayName: { type: 'string' },
                 email: { type: 'string' },
+                githubProfile: { type: 'string', nullable: true },
+                experienceLevel: { type: 'string', nullable: true },
+                learningPath: { type: 'string', nullable: true },
                 stellarAddress: { type: 'string' },
                 isVerified: { type: 'boolean' },
                 role: { type: 'string' },
@@ -147,8 +175,29 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     try {
-      const { stellar_address, signature, username, email } = parseResult.data;
-      const result = await authService.verifySignature(stellar_address, signature, username, email);
+      const {
+        stellar_address,
+        signature,
+        username,
+        email,
+        displayName,
+        display_name,
+        githubProfile,
+        github_profile,
+        experienceLevel,
+        experience_level,
+        learningPath,
+        learning_path,
+      } = parseResult.data;
+
+      const metadata = {
+        displayName: displayName || display_name,
+        githubProfile: githubProfile || github_profile,
+        experienceLevel: experienceLevel || experience_level,
+        learningPath: learningPath || learning_path,
+      };
+
+      const result = await authService.verifySignature(stellar_address, signature, username, email, metadata);
 
       const token = fastify.jwt.sign({
         userId: result.user.id,
