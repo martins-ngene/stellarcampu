@@ -1,5 +1,7 @@
 # StellarCampus Frontend Handshake & Integration Guide (`HANDSHAKE.md`)
 
+> **Frontend integration status (October 21, 2026):** Signup/signin now default to a Freighter wallet-signature flow against `NEXT_PUBLIC_API_BASE_URL` (default: the deployed API below). Live sessions keep Bearer tokens in memory and load API catalog, progress and history. Real Freighter login reached the dashboard, and a real Soroban invocation succeeded on Testnet with backend verification confirmed by the wallet owner. The real-wallet happy path now passes all five challenges (owner-confirmed 5/5, 100% dashboard progress); Soroban, XLM and CAMPUS ledger results were independently checked. The portal is live-only: demo entry points, simulated workspaces and the local demo reducer/storage have been removed. Live challenge pages now wire detail/start, Testnet transaction preparation/signing/submission, and verification results; The five-challenge happy path is verified; failure-case and additional-wallet acceptance tests remain open. Profile editing and learning-path persistence remain unimplemented. Track status in `campus-frontend/INTEGRATION_TODO.md`.
+
 Welcome to the **StellarCampus** API and Smart Contract integration guide. This document provides everything the frontend team needs to seamlessly connect the React/Next.js client to the Fastify backend and the deployed Soroban Testnet smart contract.
 
 ---
@@ -110,11 +112,11 @@ Every challenge adheres to a strict state cycle:
 ### Challenge 1 — Wallet Ownership Verification
 - **Description**: Proves the student controls the private key corresponding to their Stellar public address.
 - **Action**: Completes automatically upon successful execution of the `/api/auth/verify` endpoint.
-- **Verification Endpoint**: `POST /api/challenges/wallet_verify_001/submit` with empty payload; backend confirms active verified wallet status.
+- **Verification Endpoint**: `POST /api/challenges/wallet_verify_001/submit` with `{ "assignment_id": "<active assignment UUID>" }`; backend confirms active verified wallet status. Start an assignment first; the checked-in route requires its UUID even for wallet ownership.
 
 ### Challenge 2 — Fund a Stellar Testnet Account
 - **Action**: Student requests test lumens via Stellar Friendbot (`https://friendbot.stellar.org?addr={publicKey}`).
-- **Submission**: `POST /api/challenges/fund_account_002/submit` (no TX hash required; backend queries Horizon `/accounts/{publicKey}` to verify balance $\ge 1$ XLM).
+- **Submission**: `POST /api/challenges/fund_account_002/submit` with `{ "assignment_id": "<active assignment UUID>" }` (no TX hash required; backend queries Horizon `/accounts/{publicKey}` to verify balance $\ge 1$ XLM).
 
 ### Challenge 3 — Execute an XLM Payment
 - **Action**: Student sends assigned amount of XLM to the platform's assigned Testnet address.
@@ -197,7 +199,7 @@ All requests requiring authentication must include:
 | `POST` | `/api/challenges/:id/start` | Generate dynamic assignment (unique memo, nonce, destination, issuer) |
 | `POST` | `/api/challenges/:id/claim-tokens` | Dispense 20.0 `CAMPUS` testnet tokens to authenticated student with trustline |
 | `POST` | `/api/challenges/:id/submit` | Submit transaction hash for authoritative verification |
-| `GET` | `/api/submissions/:id` | Poll or retrieve full verification breakdown for a submission |
+| `GET` | `/api/submissions/:id` | Planned; absent in current backend. Read the matching row in `/api/students/me/history` for result details |
 | `GET` | `/api/students/me/progress` | Get overall completion progress, verified counts, pending counts |
 | `GET` | `/api/students/me/history` | List all past submissions, statuses, and Stellar Explorer URLs |
 
@@ -215,7 +217,7 @@ export interface UserProfile {
   displayName: string;
   githubUsername?: string;
   stellarAddress: string;
-  isWalletVerified: boolean;
+  isVerified: boolean;
   createdAt: string;
 }
 
@@ -231,14 +233,17 @@ export interface ChallengeItem {
 }
 
 export interface ChallengeAssignment {
-  id: string;
+  assignmentId: string;
   challengeId: string;
-  assignedMemo?: string;
-  assignedNonce?: string;
-  assignedDestination?: string;
-  assignedAmount?: string;
-  assignedAsset?: string;
-  assignedContractId?: string;
+  assignedParameters: {
+    destination?: string;
+    amount?: string;
+    asset?: string;
+    assetIssuer?: string;
+    memo?: string;
+    nonce?: string;
+    contractId?: string;
+  };
   expiresAt: string;
 }
 
@@ -255,14 +260,15 @@ export interface VerificationChecks {
 }
 
 export interface SubmissionResponse {
-  submission_id: string;
-  challenge_id: string;
+  submissionId?: string;
   status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'DUPLICATE';
-  failure_reason?: string;
-  checks?: VerificationChecks;
-  completed_at?: string;
-  explorer_url?: string;
+  failureReason?: string;
+  checks?: Record<string, boolean | string | number | null>;
+  completedAt?: string;
+  explorer_url?: string | null;
 }
+// History rows use id/challenge_id/failure_reason/verification_details/created_at.
+// A 409 duplicate response uses { statusCode, error, message }, without a submissionId.
 ```
 
 ---
@@ -276,4 +282,28 @@ When rendering **Screen 9 (Verification Result)**, the backend returns clear sem
 | `VERIFIED` | `200 OK` | Render green success banner, display passing checkmarks for all items, trigger celebratory micro-animation, offer "Back to Challenges". |
 | `FAILED` | `422 Unprocessable` | Render red/amber error banner. Display `failure_reason` verbatim (e.g. *"The transaction was sent to GABC... but expected GXYZ..."*). Display "Retry Submission" button. |
 | `DUPLICATE` | `409 Conflict` | Transaction hash has already been used by another student or in a previous challenge. Prompt student to execute a new transaction with their active assignment parameters. |
-| `PENDING` | `202 Accepted` | If network congestion delays Horizon ledger ingestion, the UI should show a polling spinner for up to 10 seconds before marking failed. |
+| `PENDING` | `202 Accepted` | If network congestion delays Horizon ledger ingestion, the UI should poll for about 10 seconds, then retain PENDING and offer refresh/history. Never mark a submission failed solely because polling timed out. The current checked-in backend is synchronous; this status is supported for future asynchronous responses. |
+
+---
+
+## 7. Live Frontend Portal
+
+Entry routes are `/signup` and `/signin`. Both use the real Freighter wallet-signature flow. Ownership verification uses `/onboarding/verify`. Student routes are `/portal`, `/portal/challenges`, `/portal/challenges/:id`, `/portal/submissions/:id`, `/portal/history`, `/portal/progress`, `/portal/profile`, `/portal/wallet`, and `/portal/settings`. Legacy `/onboarding/path` and `/onboarding/ready` URLs redirect to `/portal`; live path persistence is not implemented.
+
+The dashboard uses a desktop sidebar and a keyboard-accessible mobile navigation drawer. Summary counts and the progress ring come from API progress; category totals, continuation actions, submission statuses and verified activity derive from the catalog/history. Completed challenges retain their verified state after a failed retry, and a fully completed account sees a completion state. Settings exposes the existing theme preference, wallet details and signout. Both themes support mobile layouts; no screenshot sample records are used in the live dashboard.
+
+The registration UI includes the reference profile fields. Username and email are sent to `/auth/verify`. Display name and GitHub are editable on signup but are not sent or saved until the backend profile persistence contract exists. Backend follow-up: accept and validate display name, GitHub profile URL and experience during registration, persist them, and expose authenticated profile reads/updates. Experience offers Beginner, Intermediate, Advanced and Expert; the selection is not sent to the API or persisted yet. `/signin` remains wallet-based and does not collect registration metadata. Mobile signup uses the supplied `public/student-registration.png` background with separate coin, gradient and text layers.
+
+The portal uses only `LiveAuthProvider` and authenticated API responses. Demo entry points, sample/student workspaces, simulated wallet/signature/assignment actions, browser demo persistence and demo-only route guards have been removed. Old browser demo data is ignored; it cannot authenticate a user or populate live progress. Bearer tokens remain in memory, and signed-out or refreshed sessions require real wallet authentication. The portal layout always renders its route children; live auth/loading logic belongs inside each page.
+
+The catalog uses the five backend IDs: `wallet_verify_001`, `fund_account_002`, `payment_xlm_003`, `asset_transfer_004`, and `soroban_contract_005`. Only backend-verified evidence earns completion. Profile editing, learning-path persistence, xBull/mobile support and backend assignment recovery remain outstanding. Landing-page product illustrations and explanatory previews remain illustrative; local Postman fixtures exist only for automated testing and are not a product demo mode.
+
+## 8. Live Challenge Integration Status (October 21, 2026)
+
+The live frontend uses the camelCase start response (`assignmentId`, `challengeId`, `assignedParameters`, `expiresAt`) and snake_case submit body (`assignment_id`, `transaction_hash`). Assignment expiry and identity are checked before signing/submitting. Assignments and transaction references are retained only in the current authenticated session; no resume endpoint is available after reload.
+
+Freighter signs Testnet transactions for native XLM payments, CAMPUS trustlines/payments and the assigned Soroban call. Friendbot funding and authenticated CAMPUS faucet requests use explicit user actions. A transaction hash is saved before broadcast; ambiguous delivery does not automatically retry payment. Real Soroban execution is confirmed by transaction `92589fd1e0c90d0118f84e23eeefe77241363094ea3f2645e40dd00a2df6a32f` (ledger 5318434); the wallet owner confirmed backend verification. Real XLM and CAMPUS payments also succeeded and were backend-verified according to the wallet owner; the dashboard shows 5/5 verified. See `docs/integration/2026-10-21-real-wallet-testnet.md` for evidence.
+
+Verification UI preserves 422 failure checks/reasons and 409 duplicate messages. Submission-detail screens currently find the record through authenticated history, including `verification_details`. Future PENDING responses are displayed without earning completion; history polling stops after about 10 seconds while retaining the pending status. The current backend submit implementation is synchronous and does not emit PENDING; no local timeout fabricates a FAILED result.
+
+Backend contract follow-ups: bind the submit route's challenge ID to the locked assignment's challenge ID, and validate the assigned Soroban evidence nonce/freshness. Current frontend calls provide the correct values, but server-side enforcement remains necessary. See `campus-frontend/INTEGRATION_TODO.md` for remaining integration and verification tasks.

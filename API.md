@@ -415,3 +415,15 @@ Liveness probe.
   "timestamp": "2026-10-20T13:25:00.000Z"
 }
 ```
+
+## Real-wallet integration evidence (October 21, 2026)
+
+The frontend happy path has been exercised using a real Freighter Testnet wallet. The wallet owner confirmed backend verification for Soroban, XLM and CAMPUS and final dashboard progress of **5/5 verified (100%)**. Public ledger reads independently confirmed:
+
+| Operation | Transaction hash | Ledger |
+| --- | --- | --- |
+| Soroban `complete_challenge` | `92589fd1e0c90d0118f84e23eeefe77241363094ea3f2645e40dd00a2df6a32f` | 5318434 |
+| 2 XLM payment | `d6744e51f1103968c72e96730cbb077f756d6603bd0eaff4d95735d42f037903` | 5318565 |
+| 10 CAMPUS payment | `8617550dcafca10f4feb7460a8bf044a674ac6b559bdbe38044f8bc684f2278a` | 5318605 |
+
+Detailed evidence is recorded in `docs/integration/2026-10-21-real-wallet-testnet.md`. Remaining backend hardening and acceptance work is tracked in `campus-frontend/INTEGRATION_TODO.md`; a passing happy path does not close those items.
